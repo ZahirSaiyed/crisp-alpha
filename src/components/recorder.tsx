@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { createClient } from "@deepgram/sdk";
 import Gauge from "./Gauge";
 
 type EnergyAnalysis = {
@@ -24,7 +23,7 @@ type EnergyAnalysis = {
 type Phase = "idle" | "recording" | "ready" | "playing";
 const MAX_SECONDS = 90;
 
-export default function Recorder() {
+export default function Recorder({ stickyMobileCTA = true, appearance = "onLight", onPhaseChange }: { stickyMobileCTA?: boolean; appearance?: "onLight" | "onDark"; onPhaseChange?: (p: Phase) => void }) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState<string | null>(null);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
@@ -38,6 +37,7 @@ export default function Recorder() {
   const [isAnalyzingEnergy, setIsAnalyzingEnergy] = useState<boolean>(false);
   const [energyError, setEnergyError] = useState<string | null>(null);
   const [energy, setEnergy] = useState<EnergyAnalysis | null>(null);
+  const [isFixtureResponse, setIsFixtureResponse] = useState<boolean>(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -51,6 +51,10 @@ export default function Recorder() {
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  useEffect(() => {
+    onPhaseChange?.(phase);
+  }, [phase, onPhaseChange]);
 
   // Pick a supported audio MIME in priority order (broadest first)
   function pickSupportedMime(): string | null {
@@ -106,6 +110,7 @@ export default function Recorder() {
     setTranscriptionError(null);
     setTranscript(null);
     setDgWords(null);
+    setIsFixtureResponse(false);
 
     try {
       // Convert blob URL to file
@@ -128,6 +133,10 @@ export default function Recorder() {
         throw new Error(data.error || "Transcription failed");
       }
       
+      // Track source to handle duration in fixture mode
+      const isFixture = data?.source === "fixture";
+      setIsFixtureResponse(isFixture);
+
       setTranscript(data.transcript);
       if (Array.isArray(data.words)) {
         setDgWords(
@@ -140,6 +149,16 @@ export default function Recorder() {
             return { word: wordVal, start: startVal, end: endVal, confidence: confVal };
           })
         );
+      }
+
+      // In fixture mode, force duration from Deepgram timings to match the fixture
+      if (isFixture && Array.isArray(data.words)) {
+        let lastEnd = 0;
+        for (const w of data.words as Array<Record<string, unknown>>) {
+          const end = typeof w.end === "number" ? w.end : undefined;
+          if (typeof end === "number" && end > lastEnd) lastEnd = end;
+        }
+        if (lastEnd > 0) setAudioDurationSec(lastEnd);
       }
 
       // Run energy analysis after transcription so we can align hotspots to content words
@@ -923,32 +942,90 @@ export default function Recorder() {
 
   const disabled = phase === "recording";
   const secondsLeft = Math.max(0, MAX_SECONDS - elapsed);
+  const isDark = appearance === "onDark";
+
+  const primaryBtnClass = phase === "recording"
+    ? "bg-red-600 text-white"
+    : "";
+
+  const labelClass = isDark ? "text-gray-400" : "text-gray-600";
+  const statusText = phase === "recording"
+    ? `Recording… ${secondsLeft}s left`
+    : "";
+  
+  const ControlBar = (
+    <div className="flex flex-col items-center gap-2">
+      {/* Idle: red circle; Recording: red button with Stop text */}
+      {phase !== "recording" ? (
+        <button
+          type="button"
+          aria-label="Start recording"
+          onClick={startRecording}
+          className="rec-btn focus-visible:outline focus-visible:outline-2 focus-visible:outline-black"
+        >
+          <style jsx>{`
+            .rec-btn {
+              position: relative;
+              width: 56px; /* 14 * 4 */
+              height: 56px;
+              border-radius: 9999px;
+              background: #ef4444; /* red-600 */
+              transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 180ms, background-color 180ms;
+            }
+            .rec-btn:hover { 
+              transform: scale(1.06);
+              box-shadow: 0 10px 22px rgba(239, 68, 68, 0.28), 0 2px 6px rgba(239, 68, 68, 0.18);
+              background: #f05252; /* red-500 */
+            }
+            .rec-btn::after {
+              content: "";
+              position: absolute;
+              inset: -6px;
+              border-radius: inherit;
+              border: 2px solid rgba(239, 68, 68, 0.45);
+              opacity: 0;
+              transform: scale(0.9);
+              transition: opacity 200ms, transform 200ms;
+            }
+            .rec-btn:hover::after { opacity: 1; transform: scale(1); }
+          `}</style>
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={stopRecording}
+          aria-pressed
+          className={`px-6 sm:px-8 py-3 sm:py-3.5 rounded-full text-base sm:text-lg font-semibold ${primaryBtnClass}`}
+        >
+          Stop
+        </button>
+      )}
+      {statusText && (
+        <span className={`text-xs sm:text-sm ${labelClass}`}>{statusText}</span>
+      )}
+    </div>
+  );
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={phase === "recording" ? stopRecording : startRecording}
-          aria-pressed={phase === "recording"}
-          className={`px-4 py-2 rounded ${
-            phase === "recording" ? "bg-red-600 text-white" : "bg-black text-white"
-          }`}
-        >
-          {phase === "recording" ? "Stop" : "Record"}
-        </button>
-        <span className="text-sm text-gray-600">
-          {phase === "recording"
-            ? `Recording… ${secondsLeft}s left`
-            : mimeType
-            ? `Format: ${mimeType}`
-            : "Ready"}
-        </span>
-      </div>
+      {/* Inline controls: render ONCE. If stickyMobileCTA, only show on sm+ here. */}
+      {stickyMobileCTA ? (
+        <div className="hidden sm:flex justify-center">{ControlBar}</div>
+      ) : (
+        <div className="flex justify-center">{ControlBar}</div>
+      )}
+
+      {stickyMobileCTA && (
+        <div className={`sm:hidden fixed inset-x-0 bottom-0 z-50 border-t ${isDark ? "border-gray-800 bg-black/80" : "border-gray-200 bg-white/80"} backdrop-blur py-3 px-4`}>
+          <div className="flex items-center justify-center max-w-3xl mx-auto">
+            {ControlBar}
+          </div>
+        </div>
+      )}
 
       {isClient && !canRecord && (
-        <div className="text-sm text-gray-700">
-          Your browser doesn&apos;t support in-page recording. Use the fallback:
+        <div className={`text-sm ${isDark ? "text-gray-300" : "text-gray-700"}`}>
+          Your browser doesn&apos;t support in-page recording.
           <div className="mt-2">
             <input
               type="file"
@@ -960,7 +1037,7 @@ export default function Recorder() {
         </div>
       )}
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className={`text-sm ${isDark ? "text-red-400" : "text-red-600"}`}>{error}</p>}
 
       {blobUrl && (
         <div className="space-y-2">
@@ -972,345 +1049,103 @@ export default function Recorder() {
             onLoadedMetadata={onLoadedMetadata}
             className="w-full"
           />
-          <div className="flex gap-2 flex-wrap">
-            <button
-              type="button"
-              onClick={play}
-              className="px-3 py-1.5 rounded border border-gray-300"
-              disabled={phase === "playing"}
-            >
-              Play
-            </button>
+          <div className="flex gap-2 flex-wrap justify-center">
+            {/* Transcription available on demand */}
             <button
               type="button"
               onClick={transcribeAudio}
-              className="px-3 py-1.5 rounded bg-blue-600 text-white"
+              className="px-3 py-1.5 rounded cta-ylw"
               disabled={isTranscribing}
             >
-              {isTranscribing ? "Transcribing..." : "Get Transcript"}
+              {isTranscribing ? "Analyzing..." : "See results"}
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                if (blobUrl) URL.revokeObjectURL(blobUrl);
-                setBlobUrl(null);
-                setElapsed(0);
-                setPhase("idle");
-                setError(null);
-                setTranscript(null);
-                setTranscriptionError(null);
-                setAudioDurationSec(null);
-                setDgWords(null);
-              }}
-              className="px-3 py-1.5 rounded border border-gray-300"
-            >
-              Record again
-            </button>
+            {/* Record again removed per request */}
           </div>
         </div>
       )}
 
+      {/* Privacy line */}
+      <p className={`text-xs text-center ${isDark ? "text-gray-400" : "text-[color:rgba(11,11,12,0.6)]"}`}>Runs in your browser. Nothing uploaded unless you tap “See results.”</p>
+
       {transcript && (
-        <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-          <h3 className="text-base font-semibold text-gray-800 mb-3">Transcript:</h3>
-          <p className="text-sm text-gray-900 leading-7">{renderTranscriptRich()}</p>
-          <div className="mt-3 text-xs text-gray-600">
-            Words per minute (WPM):
-            <span className="ml-1 font-semibold text-gray-900">{calculateWpm() ?? "—"}</span>
+        <div className={`mt-4 p-4 rounded-lg ${isDark ? "bg-white/5" : "bg-white/70 border border-[color:var(--muted-2)]"}`}>
+          <h3 className={`text-base font-semibold mb-3 ${isDark ? "text-white" : "text-[color:var(--ink)]"}`}>Transcript</h3>
+          <p className={`text-sm leading-7 ${isDark ? "text-gray-100" : "text-[color:var(--ink)]"}`}>{renderTranscriptRich()}</p>
+          <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+            <div>
+              <div className="text-[color:rgba(11,11,12,0.6)]">Duration</div>
+              <div className={`${isDark ? "text-white" : "text-[color:var(--ink)]"}`}>{formatDuration(metrics.durationSec)}</div>
+            </div>
+            <div>
+              <div className="text-[color:rgba(11,11,12,0.6)]">Words</div>
+              <div className={`${isDark ? "text-white" : "text-[color:var(--ink)]"}`}>{metrics.totalWords ?? "—"}</div>
+            </div>
+            <div>
+              <div className="text-[color:rgba(11,11,12,0.6)]">WPM</div>
+              <div className={`${isDark ? "text-white" : "text-[color:var(--ink)]"}`}>{calculateWpm() ?? "—"}</div>
+            </div>
+            <div>
+              <div className="text-[color:rgba(11,11,12,0.6)]">Fillers/min</div>
+              <div className={`${isDark ? "text-white" : "text-[color:var(--ink)]"}`}>{metrics.fillerPerMin ?? "—"}</div>
+            </div>
+            <div>
+              <div className="text-[color:rgba(11,11,12,0.6)]">Long pauses/min</div>
+              <div className={`${isDark ? "text-white" : "text-[color:var(--ink)]"}`}>{metrics.longPausePerMin ?? "—"}</div>
+            </div>
+            {energy && (
+              <div>
+                <div className="text-[color:rgba(11,11,12,0.6)]">Energy var.</div>
+                <div className={`${isDark ? "text-white" : "text-[color:var(--ink)]"}`}>{energy.variability ?? "—"}</div>
+              </div>
+            )}
           </div>
-          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-700">
-            <div>
-              <span className="text-gray-600">Total words:</span>
-              <span className="ml-1 font-medium text-gray-900">{metrics.totalWords ?? "—"}</span>
+
+          {/* Visual snapshot */}
+          <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="flex flex-col items-center">
+              {(() => {
+                const wpm = calculateWpm();
+                const minW = 80, maxW = 220;
+                const value = typeof wpm === "number" ? Math.max(minW, Math.min(wpm, maxW)) - minW : 0;
+                return <Gauge value={value} max={maxW - minW} label={`${wpm ?? "—"} WPM`} />;
+              })()}
+              <div className="text-xs text-[color:rgba(11,11,12,0.6)] mt-1">Pace</div>
             </div>
-            <div>
-              <span className="text-gray-600">Duration:</span>
-              <span className="ml-1 font-medium text-gray-900">{formatDuration(metrics.durationSec)}</span>
-            </div>
-            <div>
-              <span className="text-gray-600">Filler freq (/min):</span>
-              <span className="ml-1 font-medium text-gray-900">{metrics.fillerPerMin ?? "—"}</span>
-            </div>
-            <div>
-              <span className="text-gray-600">Long pauses &gt;1.5s:</span>
-              <span className="ml-1 font-medium text-gray-900">
-                {metrics.longPausePerMin ?? "—"}/min
-                {typeof metrics.longPausePercent === "number" ? ` • ${metrics.longPausePercent}%` : ""}
-              </span>
+            <div className="flex flex-col items-center">
+              {(() => {
+                const range = energy?.pitch?.rangeHz ?? null;
+                const minR = 10, maxR = 150;
+                const value = typeof range === "number" ? Math.max(minR, Math.min(range, maxR)) - minR : 0;
+                return <Gauge value={value} max={maxR - minR} label={`${range ?? "—"} Hz`} />;
+              })()}
+              <div className="text-xs text-[color:rgba(11,11,12,0.6)] mt-1">Pitch range</div>
             </div>
           </div>
-          {/* Energy coaching UI */}
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <h4 className="text-sm font-semibold text-gray-800 mb-2">Energy (coaching)</h4>
-            <div className="flex items-center gap-3">
-              {(() => {
-                const rn = energy?.rmsNorm || [];
-                const w = 260, h = 60, pad = 4;
-                if (rn.length === 0) return <div className="text-xs text-gray-500">No energy trace</div>;
-                const maxV = Math.max(1, Math.max(...rn));
-                const points = rn.map((v, i) => {
-                  const x = pad + (i / Math.max(1, rn.length - 1)) * (w - 2 * pad);
-                  const y = h - pad - (clamp(v, 0, maxV) / maxV) * (h - 2 * pad);
-                  return `${x},${y}`;
-                }).join(" ");
-                return (
-                  <svg viewBox={`0 0 ${w} ${h}`} className="w-[260px] h-[60px]">
-                    <polyline points={points} fill="none" stroke="#F59E0B" strokeWidth="2" />
-                  </svg>
-                );
-              })()}
-              {(() => {
-                const b = energyBadge(energy?.variability ?? null);
-                return (
-                  <div className="text-xs">
-                    <span className="px-2 py-0.5 rounded-full text-white" style={{ backgroundColor: b.color }}>{b.label}</span>
-                    <div className="text-gray-500 mt-1 italic">Good energy shifts keep people listening.</div>
-                  </div>
-                );
-              })()}
-            </div>
+
+          {/* Energy sparkline */}
+          <div className="mt-6">
+            <div className="text-xs font-medium text-[color:rgba(11,11,12,0.7)] mb-2">Energy over time</div>
             {(() => {
-              const ex = energy?.hotspots?.find((h) => typeof h.label === "string" && h.label.trim().length > 0);
-              if (!ex) return null;
+              const rn = energy?.rmsNorm || [];
+              const w = 320, h = 60, pad = 4;
+              if (rn.length === 0) return <div className="text-xs text-[color:rgba(11,11,12,0.6)]">Not enough data</div>;
+              const maxV = Math.max(1, Math.max(...rn));
+              const points = rn.map((v, i) => {
+                const x = pad + (i / Math.max(1, rn.length - 1)) * (w - 2 * pad);
+                const y = h - pad - (clamp(v, 0, maxV) / maxV) * (h - 2 * pad);
+                return `${x},${y}`;
+              }).join(" ");
               return (
-                <div className="mt-2 text-xs text-gray-700">
-                  <span className="text-gray-600">Example:</span>
-                  <span className="ml-1 font-semibold text-gray-900">You stressed {ex.label} — great emphasis!</span>
-                </div>
+                <svg viewBox={`0 0 ${w} ${h}`} className="w-full max-w-md h-[60px]">
+                  <polyline points={points} fill="none" stroke="var(--bright-purple)" strokeWidth="2" />
+                </svg>
               );
             })()}
           </div>
-          {/* Coaching translation layer: Pauses & Rhythm */}
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <h4 className="text-sm font-semibold text-gray-800 mb-2">Pauses & Rhythm (coaching)</h4>
-            {/* Speedometer */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              <div className="w-[220px] h-[120px]">
-                {(() => {
-                  const wpm = calculateWpm();
-                  const minW = 80;
-                  const maxW = 220;
-                  const value = typeof wpm === "number" ? Math.max(minW, Math.min(wpm, maxW)) : 0;
-                  return (
-                    <Gauge value={value - minW} max={maxW - minW} label={`${wpm ?? "—"} WPM`} />
-                  );
-                })()}
-              </div>
-              {/* Pause highlights and Talk vs Pause pie */}
-              <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <div className="text-xs font-medium text-gray-700 mb-1">Long silences</div>
-                  <ul className="text-xs text-gray-800 space-y-1">
-                    {(metrics.pauseHighlights || []).slice(0, 3).map((p, i) => (
-                      <li key={`ph-${i}`}>
-                        <span className="text-gray-800 font-semibold">{formatDuration(p.start)}–{formatDuration(p.end)}:</span>
-                        <span className="ml-1">This {p.duration}s pause felt like you lost track.</span>
-                      </li>
-                    ))}
-                    {(!metrics.pauseHighlights || metrics.pauseHighlights.length === 0) && (
-                      <li className="text-gray-500">No long pauses detected.</li>
-                    )}
-                  </ul>
-                </div>
-                <div className="flex items-center gap-3">
-                  {(() => {
-                    const dur = metrics.durationSec || 0;
-                    const pause = metrics.totalPauseTimeSec || 0;
-                    const talk = Math.max(0, dur - pause);
-                    const fracTalk = dur > 0 ? talk / dur : 0;
-                    const fracPause = 1 - fracTalk;
-                    const r = 28;
-                    const c = 2 * Math.PI * r;
-                    return (
-                      <svg viewBox="0 0 80 80" className="w-16 h-16">
-                        <circle cx="40" cy="40" r={r} stroke="#E5E7EB" strokeWidth="10" fill="none" />
-                        <circle
-                          cx="40" cy="40" r={r} stroke="#10B981" strokeWidth="10" fill="none"
-                          strokeDasharray={`${c * fracTalk} ${c}`}
-                          transform="rotate(-90 40 40)"
-                        />
-                      </svg>
-                    );
-                  })()}
-                  <div className="text-xs text-gray-700">
-                    <div>
-                      <span className="text-gray-600">Talk vs pause:</span>
-                      <span className="ml-1 font-semibold text-gray-900">{metrics.pauseRatioPercent != null ? `${Math.round(100 - metrics.pauseRatioPercent)}% talk / ${metrics.pauseRatioPercent}% pause` : "—"}</span>
-                    </div>
-                    <div className="text-gray-500 italic">Tip: Good speakers give ~20% silence.</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            {/* Tempo stability sparkline */}
-            <div className="mt-4">
-              <div className="text-xs font-medium text-gray-700 mb-1">Rhythm over time</div>
-              <div className="flex items-center gap-3">
-                {(() => {
-                  const rates = metrics.ratesWps || [];
-                  const windowSec = metrics.rateWindowSec || 5;
-                  const w = 260, h = 60, pad = 4;
-                  if (rates.length === 0) return <div className="text-xs text-gray-500">Not enough data</div>;
-                  const maxRate = Math.max(2, Math.max(...rates, 0)); // words/sec
-                  const points = rates.map((r, i) => {
-                    const x = pad + (i / Math.max(1, rates.length - 1)) * (w - 2 * pad);
-                    const y = h - pad - (clamp(r, 0, maxRate) / maxRate) * (h - 2 * pad);
-                    return `${x},${y}`;
-                  }).join(" ");
-                  return (
-                    <svg viewBox={`0 0 ${w} ${h}`} className="w-[260px] h-[60px]">
-                      <polyline points={points} fill="none" stroke="#3B82F6" strokeWidth="2" />
-                    </svg>
-                  );
-                })()}
-                <div className="text-xs text-gray-700">
-                  <div>
-                    <span className="text-gray-600">Stability:</span>
-                    <span className="ml-1 font-semibold text-gray-900">{metrics.tempoStdDevWps != null ? (metrics.tempoStdDevWps <= 0.2 ? "Smooth flow" : "Choppy delivery") : "—"}</span>
-                  </div>
-                  <div className="text-gray-500">Based on words/sec over time.</div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <h4 className="text-sm font-semibold text-gray-800 mb-2">Pauses and rhythm (no DSP)</h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-700">
-              <div>
-                <span className="text-gray-600">Inter-word gap (avg):</span>
-                <span className="ml-1 font-semibold text-gray-900">{typeof metrics.avgGapSec === "number" ? `${metrics.avgGapSec}s` : "—"}</span>
-              </div>
-              <div>
-                <span className="text-gray-600">Inter-word gap (median):</span>
-                <span className="ml-1 font-semibold text-gray-900">{typeof metrics.medianGapSec === "number" ? `${metrics.medianGapSec}s` : "—"}</span>
-              </div>
-              <div>
-                <span className="text-gray-600">Medium pauses (0.6–1.5s):</span>
-                <span className="ml-1 font-semibold text-gray-900">{typeof metrics.mediumPauseCount === "number" ? metrics.mediumPauseCount : "—"}</span>
-              </div>
-              <div>
-                <span className="text-gray-600">Long pauses (≥1.5s):</span>
-                <span className="ml-1 font-semibold text-gray-900">{typeof metrics.longPauseCount === "number" ? metrics.longPauseCount : "—"}</span>
-              </div>
-              <div>
-                <span className="text-gray-600">Pause ratio:</span>
-                <span className="ml-1 font-semibold text-gray-900">{typeof metrics.pauseRatioPercent === "number" ? `${metrics.pauseRatioPercent}%` : "—"}</span>
-              </div>
-              <div>
-                <span className="text-gray-600">Tempo stability (stddev words/sec, 5s):</span>
-                <span className="ml-1 font-semibold text-gray-900">{typeof metrics.tempoStdDevWps === "number" ? metrics.tempoStdDevWps : "—"}</span>
-              </div>
-            </div>
-          </div>
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <h4 className="text-sm font-semibold text-gray-800 mb-2">Energy (stress/emphasis)</h4>
-            {isAnalyzingEnergy && (
-              <div className="text-xs text-gray-600">Analyzing energy…</div>
-            )}
-            {energyError && (
-              <div className="text-xs text-red-600">{energyError}</div>
-            )}
-            {energy && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-700">
-                <div>
-                  <span className="text-gray-600">Energy variability (std/mean):</span>
-                  <span className="ml-1 font-semibold text-gray-900">{energy.variability ?? "—"}</span>
-                </div>
-                <div>
-                  <span className="text-gray-600">Hotspots:</span>
-                  <span className="ml-1 font-semibold text-gray-900">{energy.hotspots.length}</span>
-                </div>
-                {energy.hotspots.slice(0, 5).map((h, idx) => (
-                  <div key={`hs-${idx}`} className="col-span-1 sm:col-span-2 text-gray-700">
-                    <span className="text-gray-600">• {formatDuration(h.start)}–{formatDuration(h.end)}:</span>
-                    <span className="ml-1 font-medium text-gray-900">{h.label ?? "emphasis"}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          {energy?.pitch && (
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <h4 className="text-sm font-semibold text-gray-800 mb-2">Pitch (intonation)</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-700">
-                <div>
-                  <span className="text-gray-600">Valid F0 frames:</span>
-                  <span className="ml-1 font-semibold text-gray-900">{energy.pitch.validCount}</span>
-                </div>
-                <div>
-                  <span className="text-gray-600">Pitch range (P95−P5):</span>
-                  <span className="ml-1 font-semibold text-gray-900">{energy.pitch.rangeHz ?? "—"} Hz</span>
-                </div>
-                <div>
-                  <span className="text-gray-600">Pitch variance:</span>
-                  <span className="ml-1 font-semibold text-gray-900">{energy.pitch.variance ?? "—"}</span>
-                </div>
-                <div>
-                  <span className="text-gray-600">Monotony index:</span>
-                  <span className="ml-1 font-semibold text-gray-900">{energy.pitch.monotonyIndex ?? "—"}</span>
-                </div>
-                <div className="col-span-1 sm:col-span-2">
-                  <span className="text-gray-600">End-of-sentence slope (avg):</span>
-                  <span className="ml-1 font-semibold text-gray-900">{energy.pitch.eosAverageSlopeHzPerSec ?? "—"} Hz/s</span>
-                </div>
-              </div>
-              {/* Pitch coaching UI */}
-              <div className="mt-3 flex flex-col sm:flex-row sm:items-center gap-4">
-                {/* Expressiveness dial */}
-                <div className="w-[220px] h-[120px]">
-                  {(() => {
-                    const range = energy.pitch?.rangeHz ?? null;
-                    const minR = 10, maxR = 150;
-                    const value = typeof range === "number" ? Math.max(minR, Math.min(range, maxR)) : 0;
-                    return (
-                      <Gauge value={value - minR} max={maxR - minR} label={`${range ?? "—"} Hz`} />
-                    );
-                  })()}
-                </div>
-                {/* Monotony comparison */}
-                <div className="text-xs text-gray-700">
-                  <div className="mb-1">
-                    <span className="text-gray-600">Monotony:</span>
-                    <span className="ml-1 font-medium text-gray-900">{monotonyCompareText(energy.pitch?.monotonyIndex ?? null)}</span>
-                  </div>
-                  <div className="text-gray-500">Varied tone makes you sound engaged.</div>
-                </div>
-              </div>
-              {/* End-of-sentence highlights */}
-              <div className="mt-3">
-                <div className="text-xs font-medium text-gray-700 mb-1">Sentence endings</div>
-                <ul className="text-xs text-gray-800 space-y-1">
-                  {(energy.pitch.eosSegments || []).slice(0, 4).map((s, idx) => {
-                    const sl = slopeLabel(s.slope);
-                    return (
-                      <li key={`eos-${idx}`}>
-                        <span className="text-gray-800 font-semibold">{formatDuration(s.end)}:</span>
-                        <span className="ml-1">This one ended {sl.text} {sl.arrow}.</span>
-                      </li>
-                    );
-                  })}
-                  {(!energy.pitch.eosSegments || energy.pitch.eosSegments.length === 0) && (
-                    <li className="text-gray-500">No sentence endings detected.</li>
-                  )}
-                </ul>
-              </div>
-            </div>
-          )}
         </div>
       )}
 
-      {transcriptionError && (
-        <div className="mt-4 p-4 bg-red-50 rounded-lg">
-          <h3 className="text-sm font-medium text-red-700 mb-2">Transcription Error:</h3>
-          <p className="text-sm text-red-600">{transcriptionError}</p>
-        </div>
-      )}
-
-      <ul className="text-xs text-gray-500 list-disc pl-5 space-y-1">
-        <li>Hard cap {MAX_SECONDS}s to keep files small and avoid abuse.</li>
-        <li>Secure by default: requires user gesture and HTTPS for mic access.</li>
-        <li>Fallback upload works on older iOS/Android if in-page recording is unavailable.</li>
-      </ul>
+      {/* Rest of analysis UI remains for future; hidden until transcript exists */}
     </div>
   );
 }

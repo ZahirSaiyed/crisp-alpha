@@ -1,0 +1,670 @@
+{
+  "metadata": {
+    "transaction_key": "deprecated",
+    "request_id": "52c12e93-39dd-4929-9bf8-8ef5eb2f5666",
+    "sha256": "d248e7422704d457becbc4dbc7c638db00c8d43bf12dcb60ebb1c7db3f5044ac",
+    "created": "2025-09-20T14:25:32.764Z",
+    "duration": 32.58,
+    "channels": 1,
+    "models": [
+      "1abfe86b-e047-4eed-858a-35e5625b41ee"
+    ],
+    "model_info": {
+      "1abfe86b-e047-4eed-858a-35e5625b41ee": {
+        "name": "2-general-nova",
+        "version": "2024-01-06.5664",
+        "arch": "nova-2"
+      }
+    }
+  },
+  "results": {
+    "channels": [
+      {
+        "alternatives": [
+          {
+            "transcript": "Hey there. My name is Zahir Sayed, and I am building Crisp, your AI speech coach. It detects us when you're monotone, when you're boring, when you're slow, when you pause, when you talk fast, when you talk slow, everything in between is gonna be the greatest thing of all time. I love technology. I love life. Let's do this. Let's go crisp. I'm gonna use this to analyze my audio. I'm using Deepgram as my API. Thank you very much.",
+            "confidence": 0.9989656,
+            "words": [
+              {
+                "word": "hey",
+                "start": 1.1999999,
+                "end": 1.52,
+                "confidence": 0.9948614,
+                "punctuated_word": "Hey"
+              },
+              {
+                "word": "there",
+                "start": 1.52,
+                "end": 2,
+                "confidence": 0.9570404,
+                "punctuated_word": "there."
+              },
+              {
+                "word": "my",
+                "start": 2,
+                "end": 2.1599998,
+                "confidence": 0.99937445,
+                "punctuated_word": "My"
+              },
+              {
+                "word": "name",
+                "start": 2.1599998,
+                "end": 2.48,
+                "confidence": 0.99989104,
+                "punctuated_word": "name"
+              },
+              {
+                "word": "is",
+                "start": 2.48,
+                "end": 2.72,
+                "confidence": 0.9969693,
+                "punctuated_word": "is"
+              },
+              {
+                "word": "zahir",
+                "start": 2.72,
+                "end": 3.12,
+                "confidence": 0.7571015,
+                "punctuated_word": "Zahir"
+              },
+              {
+                "word": "sayed",
+                "start": 3.12,
+                "end": 3.52,
+                "confidence": 0.7623172,
+                "punctuated_word": "Sayed,"
+              },
+              {
+                "word": "and",
+                "start": 3.52,
+                "end": 3.6799998,
+                "confidence": 0.99963117,
+                "punctuated_word": "and"
+              },
+              {
+                "word": "i",
+                "start": 3.6799998,
+                "end": 3.84,
+                "confidence": 0.9998665,
+                "punctuated_word": "I"
+              },
+              {
+                "word": "am",
+                "start": 3.84,
+                "end": 4,
+                "confidence": 0.9791205,
+                "punctuated_word": "am"
+              },
+              {
+                "word": "building",
+                "start": 4,
+                "end": 4.48,
+                "confidence": 0.93908674,
+                "punctuated_word": "building"
+              },
+              {
+                "word": "crisp",
+                "start": 4.48,
+                "end": 4.98,
+                "confidence": 0.81957006,
+                "punctuated_word": "Crisp,"
+              },
+              {
+                "word": "your",
+                "start": 5.2799997,
+                "end": 5.7799997,
+                "confidence": 0.9973672,
+                "punctuated_word": "your"
+              },
+              {
+                "word": "ai",
+                "start": 5.8399997,
+                "end": 6.24,
+                "confidence": 0.9995254,
+                "punctuated_word": "AI"
+              },
+              {
+                "word": "speech",
+                "start": 6.24,
+                "end": 6.56,
+                "confidence": 0.99709356,
+                "punctuated_word": "speech"
+              },
+              {
+                "word": "coach",
+                "start": 6.56,
+                "end": 7.06,
+                "confidence": 0.9994346,
+                "punctuated_word": "coach."
+              },
+              {
+                "word": "it",
+                "start": 7.12,
+                "end": 7.3599997,
+                "confidence": 0.9949092,
+                "punctuated_word": "It"
+              },
+              {
+                "word": "detects",
+                "start": 7.3599997,
+                "end": 7.8599997,
+                "confidence": 0.99858606,
+                "punctuated_word": "detects"
+              },
+              {
+                "word": "us",
+                "start": 8.96,
+                "end": 9.12,
+                "confidence": 0.9775933,
+                "punctuated_word": "us"
+              },
+              {
+                "word": "when",
+                "start": 9.12,
+                "end": 9.28,
+                "confidence": 0.9899573,
+                "punctuated_word": "when"
+              },
+              {
+                "word": "you're",
+                "start": 9.28,
+                "end": 9.5199995,
+                "confidence": 0.99132216,
+                "punctuated_word": "you're"
+              },
+              {
+                "word": "monotone",
+                "start": 9.5199995,
+                "end": 10.0199995,
+                "confidence": 0.9970973,
+                "punctuated_word": "monotone,"
+              },
+              {
+                "word": "when",
+                "start": 10.32,
+                "end": 10.559999,
+                "confidence": 0.9835331,
+                "punctuated_word": "when"
+              },
+              {
+                "word": "you're",
+                "start": 10.559999,
+                "end": 10.8,
+                "confidence": 0.99938464,
+                "punctuated_word": "you're"
+              },
+              {
+                "word": "boring",
+                "start": 10.8,
+                "end": 11.3,
+                "confidence": 0.9994166,
+                "punctuated_word": "boring,"
+              },
+              {
+                "word": "when",
+                "start": 11.36,
+                "end": 11.599999,
+                "confidence": 0.9994241,
+                "punctuated_word": "when"
+              },
+              {
+                "word": "you're",
+                "start": 11.599999,
+                "end": 11.92,
+                "confidence": 0.99984396,
+                "punctuated_word": "you're"
+              },
+              {
+                "word": "slow",
+                "start": 11.92,
+                "end": 12.42,
+                "confidence": 0.99750865,
+                "punctuated_word": "slow,"
+              },
+              {
+                "word": "when",
+                "start": 13.455,
+                "end": 13.695,
+                "confidence": 0.99955374,
+                "punctuated_word": "when"
+              },
+              {
+                "word": "you",
+                "start": 13.695,
+                "end": 13.934999,
+                "confidence": 0.99987423,
+                "punctuated_word": "you"
+              },
+              {
+                "word": "pause",
+                "start": 13.934999,
+                "end": 14.415,
+                "confidence": 0.94995034,
+                "punctuated_word": "pause,"
+              },
+              {
+                "word": "when",
+                "start": 14.415,
+                "end": 14.655,
+                "confidence": 0.99931085,
+                "punctuated_word": "when"
+              },
+              {
+                "word": "you",
+                "start": 14.655,
+                "end": 14.735,
+                "confidence": 0.9942562,
+                "punctuated_word": "you"
+              },
+              {
+                "word": "talk",
+                "start": 14.735,
+                "end": 15.054999,
+                "confidence": 0.9989656,
+                "punctuated_word": "talk"
+              },
+              {
+                "word": "fast",
+                "start": 15.054999,
+                "end": 15.455,
+                "confidence": 0.9974826,
+                "punctuated_word": "fast,"
+              },
+              {
+                "word": "when",
+                "start": 15.455,
+                "end": 15.695,
+                "confidence": 0.9875564,
+                "punctuated_word": "when"
+              },
+              {
+                "word": "you",
+                "start": 15.695,
+                "end": 15.775,
+                "confidence": 0.99197996,
+                "punctuated_word": "you"
+              },
+              {
+                "word": "talk",
+                "start": 15.775,
+                "end": 16.015,
+                "confidence": 0.99815315,
+                "punctuated_word": "talk"
+              },
+              {
+                "word": "slow",
+                "start": 16.015,
+                "end": 16.515,
+                "confidence": 0.9277774,
+                "punctuated_word": "slow,"
+              },
+              {
+                "word": "everything",
+                "start": 16.895,
+                "end": 17.295,
+                "confidence": 0.9987741,
+                "punctuated_word": "everything"
+              },
+              {
+                "word": "in",
+                "start": 17.295,
+                "end": 17.455,
+                "confidence": 0.99919325,
+                "punctuated_word": "in"
+              },
+              {
+                "word": "between",
+                "start": 17.455,
+                "end": 17.775,
+                "confidence": 0.99978715,
+                "punctuated_word": "between"
+              },
+              {
+                "word": "is",
+                "start": 17.775,
+                "end": 17.935,
+                "confidence": 0.83369935,
+                "punctuated_word": "is"
+              },
+              {
+                "word": "gonna",
+                "start": 17.935,
+                "end": 18.175,
+                "confidence": 0.991168,
+                "punctuated_word": "gonna"
+              },
+              {
+                "word": "be",
+                "start": 18.175,
+                "end": 18.255,
+                "confidence": 0.9979248,
+                "punctuated_word": "be"
+              },
+              {
+                "word": "the",
+                "start": 18.255,
+                "end": 18.335,
+                "confidence": 0.99849033,
+                "punctuated_word": "the"
+              },
+              {
+                "word": "greatest",
+                "start": 18.335,
+                "end": 18.654999,
+                "confidence": 0.99969673,
+                "punctuated_word": "greatest"
+              },
+              {
+                "word": "thing",
+                "start": 18.654999,
+                "end": 18.814999,
+                "confidence": 0.9979924,
+                "punctuated_word": "thing"
+              },
+              {
+                "word": "of",
+                "start": 18.814999,
+                "end": 18.974998,
+                "confidence": 0.9996345,
+                "punctuated_word": "of"
+              },
+              {
+                "word": "all",
+                "start": 18.974998,
+                "end": 19.134998,
+                "confidence": 0.9997421,
+                "punctuated_word": "all"
+              },
+              {
+                "word": "time",
+                "start": 19.134998,
+                "end": 19.615,
+                "confidence": 0.99927926,
+                "punctuated_word": "time."
+              },
+              {
+                "word": "i",
+                "start": 19.615,
+                "end": 19.775,
+                "confidence": 0.9992786,
+                "punctuated_word": "I"
+              },
+              {
+                "word": "love",
+                "start": 19.775,
+                "end": 20.015,
+                "confidence": 0.9983277,
+                "punctuated_word": "love"
+              },
+              {
+                "word": "technology",
+                "start": 20.015,
+                "end": 20.515,
+                "confidence": 0.9639468,
+                "punctuated_word": "technology."
+              },
+              {
+                "word": "i",
+                "start": 20.895,
+                "end": 21.055,
+                "confidence": 0.99978894,
+                "punctuated_word": "I"
+              },
+              {
+                "word": "love",
+                "start": 21.055,
+                "end": 21.375,
+                "confidence": 0.9998692,
+                "punctuated_word": "love"
+              },
+              {
+                "word": "life",
+                "start": 21.375,
+                "end": 21.855,
+                "confidence": 0.99839044,
+                "punctuated_word": "life."
+              },
+              {
+                "word": "let's",
+                "start": 21.855,
+                "end": 22.175,
+                "confidence": 0.9995854,
+                "punctuated_word": "Let's"
+              },
+              {
+                "word": "do",
+                "start": 22.175,
+                "end": 22.335,
+                "confidence": 0.9998989,
+                "punctuated_word": "do"
+              },
+              {
+                "word": "this",
+                "start": 22.335,
+                "end": 22.835,
+                "confidence": 0.9994261,
+                "punctuated_word": "this."
+              },
+              {
+                "word": "let's",
+                "start": 24.744938,
+                "end": 24.984938,
+                "confidence": 0.9996881,
+                "punctuated_word": "Let's"
+              },
+              {
+                "word": "go",
+                "start": 24.984938,
+                "end": 25.224937,
+                "confidence": 0.9989467,
+                "punctuated_word": "go"
+              },
+              {
+                "word": "crisp",
+                "start": 25.224937,
+                "end": 25.724937,
+                "confidence": 0.8652134,
+                "punctuated_word": "crisp."
+              },
+              {
+                "word": "i'm",
+                "start": 26.184937,
+                "end": 26.344936,
+                "confidence": 0.99977887,
+                "punctuated_word": "I'm"
+              },
+              {
+                "word": "gonna",
+                "start": 26.344936,
+                "end": 26.844936,
+                "confidence": 0.9984658,
+                "punctuated_word": "gonna"
+              },
+              {
+                "word": "use",
+                "start": 27.144938,
+                "end": 27.304937,
+                "confidence": 0.99891865,
+                "punctuated_word": "use"
+              },
+              {
+                "word": "this",
+                "start": 27.304937,
+                "end": 27.784937,
+                "confidence": 0.9988689,
+                "punctuated_word": "this"
+              },
+              {
+                "word": "to",
+                "start": 27.784937,
+                "end": 28.024937,
+                "confidence": 0.9990268,
+                "punctuated_word": "to"
+              },
+              {
+                "word": "analyze",
+                "start": 28.024937,
+                "end": 28.424938,
+                "confidence": 0.99950886,
+                "punctuated_word": "analyze"
+              },
+              {
+                "word": "my",
+                "start": 28.424938,
+                "end": 28.584938,
+                "confidence": 0.9997602,
+                "punctuated_word": "my"
+              },
+              {
+                "word": "audio",
+                "start": 28.584938,
+                "end": 28.984938,
+                "confidence": 0.9968217,
+                "punctuated_word": "audio."
+              },
+              {
+                "word": "i'm",
+                "start": 28.984938,
+                "end": 29.144938,
+                "confidence": 0.9997485,
+                "punctuated_word": "I'm"
+              },
+              {
+                "word": "using",
+                "start": 29.144938,
+                "end": 29.464937,
+                "confidence": 0.99997425,
+                "punctuated_word": "using"
+              },
+              {
+                "word": "deepgram",
+                "start": 29.464937,
+                "end": 29.964937,
+                "confidence": 0.99944746,
+                "punctuated_word": "Deepgram"
+              },
+              {
+                "word": "as",
+                "start": 30.024937,
+                "end": 30.184937,
+                "confidence": 0.99949765,
+                "punctuated_word": "as"
+              },
+              {
+                "word": "my",
+                "start": 30.184937,
+                "end": 30.424938,
+                "confidence": 0.99950016,
+                "punctuated_word": "my"
+              },
+              {
+                "word": "api",
+                "start": 30.424938,
+                "end": 30.924938,
+                "confidence": 0.99913937,
+                "punctuated_word": "API."
+              },
+              {
+                "word": "thank",
+                "start": 31.144938,
+                "end": 31.384937,
+                "confidence": 0.9997061,
+                "punctuated_word": "Thank"
+              },
+              {
+                "word": "you",
+                "start": 31.384937,
+                "end": 31.544937,
+                "confidence": 0.99995625,
+                "punctuated_word": "you"
+              },
+              {
+                "word": "very",
+                "start": 31.544937,
+                "end": 31.784937,
+                "confidence": 0.9997398,
+                "punctuated_word": "very"
+              },
+              {
+                "word": "much",
+                "start": 31.784937,
+                "end": 32.284935,
+                "confidence": 0.99982655,
+                "punctuated_word": "much."
+              }
+            ],
+            "paragraphs": {
+              "transcript": "\nHey there. My name is Zahir Sayed, and I am building Crisp, your AI speech coach. It detects us when you're monotone, when you're boring, when you're slow, when you pause, when you talk fast, when you talk slow, everything in between is gonna be the greatest thing of all time. I love technology. I love life.\n\nLet's do this. Let's go crisp. I'm gonna use this to analyze my audio. I'm using Deepgram as my API. Thank you very much.",
+              "paragraphs": [
+                {
+                  "sentences": [
+                    {
+                      "text": "Hey there.",
+                      "start": 1.1999999,
+                      "end": 2
+                    },
+                    {
+                      "text": "My name is Zahir Sayed, and I am building Crisp, your AI speech coach.",
+                      "start": 2,
+                      "end": 7.06
+                    },
+                    {
+                      "text": "It detects us when you're monotone, when you're boring, when you're slow, when you pause, when you talk fast, when you talk slow, everything in between is gonna be the greatest thing of all time.",
+                      "start": 7.12,
+                      "end": 19.615
+                    },
+                    {
+                      "text": "I love technology.",
+                      "start": 19.615,
+                      "end": 20.515
+                    },
+                    {
+                      "text": "I love life.",
+                      "start": 20.895,
+                      "end": 21.855
+                    }
+                  ],
+                  "num_words": 57,
+                  "start": 1.1999999,
+                  "end": 21.855
+                },
+                {
+                  "sentences": [
+                    {
+                      "text": "Let's do this.",
+                      "start": 21.855,
+                      "end": 22.835
+                    },
+                    {
+                      "text": "Let's go crisp.",
+                      "start": 24.744938,
+                      "end": 25.724937
+                    },
+                    {
+                      "text": "I'm gonna use this to analyze my audio.",
+                      "start": 26.184937,
+                      "end": 28.984938
+                    },
+                    {
+                      "text": "I'm using Deepgram as my API.",
+                      "start": 28.984938,
+                      "end": 30.924938
+                    },
+                    {
+                      "text": "Thank you very much.",
+                      "start": 31.144938,
+                      "end": 32.284935
+                    }
+                  ],
+                  "num_words": 24,
+                  "start": 21.855,
+                  "end": 32.284935
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
