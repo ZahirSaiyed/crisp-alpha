@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Gauge from "./Gauge";
+import { AnimatePresence, motion } from "framer-motion";
 
 type EnergyAnalysis = {
   variability: number | null;
@@ -103,9 +104,8 @@ export default function Recorder({ stickyMobileCTA = true, appearance = "onLight
     clearTimers();
   }
 
-  async function transcribeAudio() {
-    if (!blobUrl) return;
-    
+  async function transcribeAudio(sourceBlob?: Blob) {
+    if (!sourceBlob && !blobUrl) return;
     setIsTranscribing(true);
     setTranscriptionError(null);
     setTranscript(null);
@@ -113,9 +113,8 @@ export default function Recorder({ stickyMobileCTA = true, appearance = "onLight
     setIsFixtureResponse(false);
 
     try {
-      // Convert blob URL to file
-      const response = await fetch(blobUrl);
-      const audioBlob = await response.blob();
+      // Resolve audio blob either from provided source or from current blobUrl
+      const audioBlob = sourceBlob ? sourceBlob : await (await fetch(blobUrl as string)).blob();
       
       // Create FormData to send to API route
       const formData = new FormData();
@@ -857,6 +856,8 @@ export default function Recorder({ stickyMobileCTA = true, appearance = "onLight
         streamRef.current?.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
         clearTimers();
+        // Auto-run transcription immediately using the available blob to avoid race on state updates
+        setTimeout(() => transcribeAudio(blob), 0);
       };
 
       mr.start(100); // collect data in small chunks
@@ -953,6 +954,79 @@ export default function Recorder({ stickyMobileCTA = true, appearance = "onLight
     ? `Recording… ${secondsLeft}s left`
     : "";
   
+  function resetSession() {
+    // Reset to idle and clear artifacts
+    setPhase("idle");
+    setTranscript(null);
+    setDgWords(null);
+    setBlobUrl(null);
+    setAudioDurationSec(null);
+    setEnergy(null);
+    setTranscriptionError(null);
+    setEnergyError(null);
+    setElapsed(0);
+  }
+
+  function saveSession() {
+    try {
+      const payload = {
+        savedAt: new Date().toISOString(),
+        transcript,
+        metrics,
+        energy,
+        audioDurationSec,
+      };
+      const key = `crisp-session-${payload.savedAt}`;
+      localStorage.setItem(key, JSON.stringify(payload));
+      alert("Session saved locally.");
+    } catch {
+      alert("Failed to save session.");
+    }
+  }
+
+  // Custom playback state
+  const [playbackTime, setPlaybackTime] = useState<number>(0);
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+
+  function togglePlayPause() {
+    const el = audioElRef.current;
+    if (!el) return;
+    if (el.paused) {
+      el.play().catch(() => {});
+    } else {
+      el.pause();
+    }
+  }
+
+  function onTimeUpdate() {
+    const el = audioElRef.current;
+    if (!el) return;
+    setPlaybackTime(el.currentTime || 0);
+  }
+
+  function onPlayEvent() {
+    setIsPlaying(true);
+    setPhase("playing");
+  }
+
+  function onPauseEvent() {
+    setIsPlaying(false);
+    if (phase === "playing") setPhase("ready");
+  }
+
+  function seekToFraction(frac: number) {
+    const el = audioElRef.current;
+    if (!el || !Number.isFinite(el.duration) || el.duration <= 0) return;
+    el.currentTime = Math.max(0, Math.min(el.duration * frac, el.duration));
+  }
+
+  function handleProgressClick(e: React.MouseEvent<HTMLDivElement>) {
+    const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const frac = rect.width > 0 ? x / rect.width : 0;
+    seekToFraction(frac);
+  }
+ 
   const ControlBar = (
     <div className="flex flex-col items-center gap-2">
       {/* Idle: red circle; Recording: red button with Stop text */}
@@ -989,6 +1063,10 @@ export default function Recorder({ stickyMobileCTA = true, appearance = "onLight
             }
             .rec-btn:hover::after { opacity: 1; transform: scale(1); }
           `}</style>
+          <style jsx>{`
+            @keyframes pulse-ring { from { transform: scale(1); opacity: 0.45; } to { transform: scale(1.5); opacity: 0; } }
+          `}</style>
+          <span className="absolute inset-0 rounded-full" style={{ boxShadow: "0 0 0 0 rgba(239,68,68,0.5)", animation: "pulse-ring 1.6s ease-out infinite" }} />
         </button>
       ) : (
         <button
@@ -1005,24 +1083,34 @@ export default function Recorder({ stickyMobileCTA = true, appearance = "onLight
       )}
     </div>
   );
-
+ 
   return (
-    <div className="space-y-4">
+    <div className={`space-y-4 ${transcript ? "mt-8 sm:mt-12" : ""}`}>
       {/* Inline controls: render ONCE. If stickyMobileCTA, only show on sm+ here. */}
-      {stickyMobileCTA ? (
-        <div className="hidden sm:flex justify-center">{ControlBar}</div>
-      ) : (
-        <div className="flex justify-center">{ControlBar}</div>
+      {!transcript && (
+        stickyMobileCTA ? (
+          <div className="hidden sm:flex justify-center">{ControlBar}</div>
+        ) : (
+          <div className="flex justify-center">{ControlBar}</div>
+        )
       )}
 
-      {stickyMobileCTA && (
-        <div className={`sm:hidden fixed inset-x-0 bottom-0 z-50 border-t ${isDark ? "border-gray-800 bg-black/80" : "border-gray-200 bg-white/80"} backdrop-blur py-3 px-4`}>
-          <div className="flex items-center justify-center max-w-3xl mx-auto">
-            {ControlBar}
-          </div>
-        </div>
-      )}
-
+      <AnimatePresence>
+        {stickyMobileCTA && !transcript && (
+          <motion.div
+            key="sticky"
+            className={`sm:hidden fixed inset-x-0 bottom-0 z-50 border-t ${isDark ? "border-gray-800 bg-black/80" : "border-gray-200 bg-white/80"} backdrop-blur py-3 px-4`}
+            initial={{ y: 64, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 64, opacity: 0 }}
+          >
+            <div className="flex items-center justify-center max-w-3xl mx-auto">
+              {ControlBar}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+ 
       {isClient && !canRecord && (
         <div className={`text-sm ${isDark ? "text-gray-300" : "text-gray-700"}`}>
           Your browser doesn&apos;t support in-page recording.
@@ -1036,95 +1124,104 @@ export default function Recorder({ stickyMobileCTA = true, appearance = "onLight
           </div>
         </div>
       )}
-
+ 
       {error && <p className={`text-sm ${isDark ? "text-red-400" : "text-red-600"}`}>{error}</p>}
-
+ 
       {blobUrl && (
-        <div className="space-y-2">
-          <audio
-            ref={audioElRef}
-            src={blobUrl}
-            controls
-            onEnded={onEnded}
-            onLoadedMetadata={onLoadedMetadata}
-            className="w-full"
-          />
-          <div className="flex gap-2 flex-wrap justify-center">
-            {/* Transcription available on demand */}
-            <button
-              type="button"
-              onClick={transcribeAudio}
-              className="px-3 py-1.5 rounded cta-ylw"
-              disabled={isTranscribing}
-            >
-              {isTranscribing ? "Analyzing..." : "See results"}
-            </button>
-            {/* Record again removed per request */}
+        <audio
+          ref={audioElRef}
+          src={blobUrl}
+          onEnded={onEnded}
+          onLoadedMetadata={(e) => { onLoadedMetadata(); setPlaybackTime(0); }}
+          onTimeUpdate={onTimeUpdate}
+          onPlay={onPlayEvent}
+          onPause={onPauseEvent}
+          className="hidden"
+        />
+      )}
+ 
+      {transcript && (
+    <>
+      {/* Bold coach banner (not a tile) */}
+      <div className="mx-auto max-w-4xl px-2">
+        <div className="rounded-[20px] px-4 sm:px-6 py-4 sm:py-5 bg-gradient-to-r from-[var(--bright-purple)]/12 via-[var(--bright-sky)]/12 to-[var(--bright-lime)]/12 shadow-[0_12px_40px_rgba(0,0,0,0.06)]">
+          <div className="flex items-center gap-3">
+            <div className="text-xl">🟢</div>
+            <p className="text-base sm:text-lg font-semibold text-[color:var(--ink)]">You sounded confident and engaging — a strong foundation to build on.</p>
           </div>
         </div>
-      )}
+      </div>
 
-      {/* Privacy line */}
-      <p className={`text-xs text-center ${isDark ? "text-gray-400" : "text-[color:rgba(11,11,12,0.6)]"}`}>Runs in your browser. Nothing uploaded unless you tap “See results.”</p>
-
-      {transcript && (
-        <div className={`mt-4 p-4 rounded-lg ${isDark ? "bg-white/5" : "bg-white/70 border border-[color:var(--muted-2)]"}`}>
-          <h3 className={`text-base font-semibold mb-3 ${isDark ? "text-white" : "text-[color:var(--ink)]"}`}>Transcript</h3>
-          <p className={`text-sm leading-7 ${isDark ? "text-gray-100" : "text-[color:var(--ink)]"}`}>{renderTranscriptRich()}</p>
-          <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
-            <div>
-              <div className="text-[color:rgba(11,11,12,0.6)]">Duration</div>
-              <div className={`${isDark ? "text-white" : "text-[color:var(--ink)]"}`}>{formatDuration(metrics.durationSec)}</div>
+      {/* Tiled details below */}
+      <div className={`mt-8 sm:mt-10 grid gap-4 ${isDark ? "" : "[&>div]:bg-white/70 [&>div]:border [&>div]:border-[color:var(--muted-2)]"} grid-cols-1`}>
+        {/* Tile: Transcript + Playback */}
+        <div className="p-4 rounded-lg">
+            <h3 className={`text-base font-semibold mb-2 ${isDark ? "text-white" : "text-[color:var(--ink)]"}`}>Playback & Transcript</h3>
+            <div className="space-y-4">
+              {blobUrl && (
+                <div className="rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.06)] bg-white/80 backdrop-blur-[2px] border border-[color:var(--muted-2)] p-3 flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={togglePlayPause}
+                    className="w-12 h-12 rounded-full flex items-center justify-center"
+                    style={{ background: "var(--bright-purple)", color: "white" }}
+                    aria-label={isPlaying ? "Pause" : "Play"}
+                  >
+                    {isPlaying ? (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="6" y="4" width="4" height="16" fill="white"/><rect x="14" y="4" width="4" height="16" fill="white"/></svg>
+                    ) : (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M8 5v14l11-7L8 5z" fill="white"/></svg>
+                    )}
+                  </button>
+                  <div className="flex-1 flex flex-col gap-1">
+                    <div className="w-full h-2.5 rounded-full bg-[color:var(--muted-2)] cursor-pointer" onClick={handleProgressClick}>
+                      <div
+                        className="h-2.5 rounded-full"
+                        style={{ width: `${(() => {
+                          const dur = audioElRef.current?.duration || audioDurationSec || 0;
+                          const t = playbackTime || 0;
+                          if (!dur || dur <= 0) return 0;
+                          return Math.min(100, Math.max(0, (t / dur) * 100));
+                        })()}%`, background: "var(--bright-purple)" }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-xs text-[color:rgba(11,11,12,0.6)]">
+                      <span>{formatDuration(playbackTime)}</span>
+                      <span>{formatDuration(audioElRef.current?.duration || audioDurationSec || 0)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div className={`text-sm leading-7 ${isDark ? "text-gray-100" : "text-[color:var(--ink)]"} max-h-64 overflow-auto pr-1`}>{renderTranscriptRich()}</div>
             </div>
-            <div>
-              <div className="text-[color:rgba(11,11,12,0.6)]">Words</div>
-              <div className={`${isDark ? "text-white" : "text-[color:var(--ink)]"}`}>{metrics.totalWords ?? "—"}</div>
-            </div>
-            <div>
-              <div className="text-[color:rgba(11,11,12,0.6)]">WPM</div>
-              <div className={`${isDark ? "text-white" : "text-[color:var(--ink)]"}`}>{calculateWpm() ?? "—"}</div>
-            </div>
-            <div>
-              <div className="text-[color:rgba(11,11,12,0.6)]">Fillers/min</div>
-              <div className={`${isDark ? "text-white" : "text-[color:var(--ink)]"}`}>{metrics.fillerPerMin ?? "—"}</div>
-            </div>
-            <div>
-              <div className="text-[color:rgba(11,11,12,0.6)]">Long pauses/min</div>
-              <div className={`${isDark ? "text-white" : "text-[color:var(--ink)]"}`}>{metrics.longPausePerMin ?? "—"}</div>
-            </div>
-            {energy && (
-              <div>
-                <div className="text-[color:rgba(11,11,12,0.6)]">Energy var.</div>
-                <div className={`${isDark ? "text-white" : "text-[color:var(--ink)]"}`}>{energy.variability ?? "—"}</div>
-              </div>
-            )}
           </div>
 
-          {/* Visual snapshot */}
-          <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div className="flex flex-col items-center">
+          {/* Tile: Pace (WPM) */}
+          <div className="p-4 rounded-lg">
+            <h3 className="text-base font-semibold mb-2">Pace</h3>
+            <div className="flex items-center justify-between">
               {(() => {
                 const wpm = calculateWpm();
                 const minW = 80, maxW = 220;
                 const value = typeof wpm === "number" ? Math.max(minW, Math.min(wpm, maxW)) - minW : 0;
-                return <Gauge value={value} max={maxW - minW} label={`${wpm ?? "—"} WPM`} />;
+                return <Gauge value={value} max={maxW - minW} label={`${wpm ?? "—"} WPM`} color="#12B886" trackColor="#E5E7EB" />;
               })()}
-              <div className="text-xs text-[color:rgba(11,11,12,0.6)] mt-1">Pace</div>
-            </div>
-            <div className="flex flex-col items-center">
-              {(() => {
-                const range = energy?.pitch?.rangeHz ?? null;
-                const minR = 10, maxR = 150;
-                const value = typeof range === "number" ? Math.max(minR, Math.min(range, maxR)) - minR : 0;
-                return <Gauge value={value} max={maxR - minR} label={`${range ?? "—"} Hz`} />;
-              })()}
-              <div className="text-xs text-[color:rgba(11,11,12,0.6)] mt-1">Pitch range</div>
+              <div className="text-sm max-w-[12rem]">
+                {(() => {
+                  const wpm = calculateWpm();
+                  if (!wpm) return "We’ll estimate your pace in words per minute.";
+                  if (wpm < 110) return "Steady, measured delivery. Try adding energy before key points.";
+                  if (wpm <= 170) return "✅ Clear, confident pace — easy to follow.";
+                  return "Fast — add a brief pause before big ideas so they land.";
+                })()}
+                <div className="text-xs mt-1 text-[color:rgba(11,11,12,0.6)]">👉 Slow slightly before key points to add punch.</div>
+              </div>
             </div>
           </div>
 
-          {/* Energy sparkline */}
-          <div className="mt-6">
-            <div className="text-xs font-medium text-[color:rgba(11,11,12,0.7)] mb-2">Energy over time</div>
+          {/* Tile: Energy */}
+          <div className="p-4 rounded-lg">
+            <h3 className="text-base font-semibold mb-2">Energy</h3>
             {(() => {
               const rn = energy?.rmsNorm || [];
               const w = 320, h = 60, pad = 4;
@@ -1136,14 +1233,82 @@ export default function Recorder({ stickyMobileCTA = true, appearance = "onLight
                 return `${x},${y}`;
               }).join(" ");
               return (
-                <svg viewBox={`0 0 ${w} ${h}`} className="w-full max-w-md h-[60px]">
-                  <polyline points={points} fill="none" stroke="var(--bright-purple)" strokeWidth="2" />
-                </svg>
+                <>
+                  <svg viewBox={`0 0 ${w} ${h}`} className="w-full max-w-md h-[60px]">
+                    <polyline points={points} fill="none" stroke="var(--bright-purple)" strokeWidth="2" />
+                  </svg>
+                  <div className="text-sm mt-2">
+                    {(() => {
+                      const v = energy?.variability ?? null;
+                      if (v == null) return "We analyze changes in loudness to spot emphasis.";
+                      if (v >= 0.3) return "Alive — strong emphasis kept attention.";
+                      if (v < 0.15) return "Flat — add emphasis on key points.";
+                      return "Moderate — vary tone to punch important ideas.";
+                    })()}
+                    <div className="text-xs mt-1 text-[color:rgba(11,11,12,0.6)]">👉 Great emphasis! Keep stressing key words to hold the room.</div>
+                  </div>
+                </>
               );
             })()}
           </div>
-        </div>
+
+          {/* Tile: Pauses */}
+          <div className="p-4 rounded-lg">
+            <h3 className="text-base font-semibold mb-2">Pauses</h3>
+            <div className="text-sm">{(() => {
+               const perMin = metrics.longPausePerMin ?? null;
+               const ratio = metrics.pauseRatioPercent ?? null;
+               if (perMin == null || ratio == null) return "We track long pauses and overall silence ratio.";
+               const ratioText = `Long pauses: ${perMin}/min • Silence ${ratio}%`;
+               const overTarget = ratio > 22; // soft guard around ~20%
+               const underTarget = ratio < 15;
+               return (
+                 <span className={overTarget ? "text-[#8A6D00]" : underTarget ? "text-[#8A6D00]" : ""}>
+                   {ratioText}
+                 </span>
+               );
+             })()}</div>
+            <div className="text-xs text-[color:rgba(11,11,12,0.6)] mt-1">⚖️ Solid balance. Use silence more strategically — pause after big points.</div>
+          </div>
+
+          {/* Tile: Expressiveness (Pitch) */}
+          <div className="p-4 rounded-lg">
+            <h3 className="text-base font-semibold mb-2">Expressiveness</h3>
+            <div className="flex items-center justify-between">
+              {(() => {
+                const range = energy?.pitch?.rangeHz ?? null;
+                const minR = 10, maxR = 150;
+                const value = typeof range === "number" ? Math.max(minR, Math.min(range, maxR)) - minR : 0;
+                return <Gauge value={value} max={maxR - minR} label={`${range ?? "—"} Hz`} color="#FF6B5E" trackColor="#E5E7EB" />;
+              })()}
+              <div className="text-sm max-w-[12rem]">
+                {(() => {
+                  const range = energy?.pitch?.rangeHz ?? null;
+                  if (range == null) return "Pitch range hints at vocal variety.";
+                  if (range >= 80) return "Expressive — engaging tone.";
+                  if (range >= 40) return "Moderate — add a bit more range.";
+                  return "Flat — vary pitch to avoid monotone.";
+                })()}
+                <div className="text-xs mt-1 text-[color:rgba(11,11,12,0.6)]">👉 Try a rising tone at questions to invite curiosity.</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom CTAs spanning full width */}
+          <div className="p-4 rounded-lg flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-end">
+            <button type="button" onClick={resetSession} className="px-4 py-2 rounded-full border border-[color:var(--muted-2)] bg-white/80 text-[color:var(--ink)]">
+              🔁 Try again
+            </button>
+            <button type="button" onClick={saveSession} className="px-4 py-2 rounded-full cta-ylw font-semibold">
+              💾 Save session
+            </button>
+          </div>
+      </div>
+    </>
       )}
+
+      {/* Privacy line at bottom */}
+      <p className={`mt-6 text-xs text-center ${isDark ? "text-gray-400" : "text-[color:rgba(11,11,12,0.6)]"}`}>Runs in your browser. Upload only for analysis when results appear.</p>
 
       {/* Rest of analysis UI remains for future; hidden until transcript exists */}
     </div>

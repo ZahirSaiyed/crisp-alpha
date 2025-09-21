@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 
-export default function Gauge({ value, max, label }: { value: number; max: number; label?: string }) {
+export default function Gauge({ value, max, label, color = "#22c55e", trackColor = "#e5e7eb" }: { value: number; max: number; label?: string; color?: string; trackColor?: string }) {
   const clamped = Math.max(0, Math.min(value, max));
   const circumference = 283; // approximate length of semi-circle path used below
   const offset = circumference - (circumference * clamped) / max;
@@ -13,14 +13,14 @@ export default function Gauge({ value, max, label }: { value: number; max: numbe
         <path
           d="M10,100 A90,90 0 0,1 190,100"
           fill="none"
-          stroke="#e5e7eb"
+          stroke={trackColor}
           strokeWidth="12"
           strokeLinecap="round"
         />
         <motion.path
           d="M10,100 A90,90 0 0,1 190,100"
           fill="none"
-          stroke="#22c55e"
+          stroke={color}
           strokeWidth="12"
           strokeLinecap="round"
           strokeDasharray={circumference}
