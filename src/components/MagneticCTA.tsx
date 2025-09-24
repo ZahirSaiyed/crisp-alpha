@@ -4,7 +4,7 @@ import React, { useRef, useState } from "react";
 import { motion, useMotionValue, useSpring } from "framer-motion";
 import Link from "next/link";
 
-export default function MagneticCTA({ href, children }: { href: string; children: React.ReactNode }) {
+export default function MagneticCTA({ href, children, disabled = false, loading = false, onClick }: { href?: string; children: React.ReactNode; disabled?: boolean; loading?: boolean; onClick?: (e: React.MouseEvent) => void }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const dx = useMotionValue(0);
   const dy = useMotionValue(0);
@@ -13,6 +13,7 @@ export default function MagneticCTA({ href, children }: { href: string; children
   const [ripples, setRipples] = useState<Array<{ id: number; x: number; y: number }>>([]);
 
   function onMove(e: React.MouseEvent<HTMLDivElement>) {
+    if (disabled) return;
     const el = ref.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
@@ -27,36 +28,62 @@ export default function MagneticCTA({ href, children }: { href: string; children
     dy.set(0);
   }
 
-  function onClick(e: React.MouseEvent<HTMLAnchorElement>) {
+  function handleClick(e: React.MouseEvent) {
+    if (disabled) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
     const el = ref.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    const id = Date.now();
-    setRipples((rs) => [...rs, { id, x, y }]);
-    setTimeout(() => setRipples((rs) => rs.filter((r) => r.id !== id)), 600);
+    if (el) {
+      const rect = el.getBoundingClientRect();
+      const x = (e as React.MouseEvent<HTMLAnchorElement | HTMLButtonElement>).clientX - rect.left;
+      const y = (e as React.MouseEvent<HTMLAnchorElement | HTMLButtonElement>).clientY - rect.top;
+      const id = Date.now();
+      setRipples((rs) => [...rs, { id, x, y }]);
+      setTimeout(() => setRipples((rs) => rs.filter((r) => r.id !== id)), 600);
+    }
+    onClick?.(e);
   }
+
+  const commonClass = `relative cta-ylw px-6 sm:px-8 py-3 sm:py-3.5 text-base sm:text-lg font-semibold inline-block overflow-hidden ${disabled ? "opacity-60 cursor-not-allowed" : ""}`;
+
+  const Content = (
+    <>
+      {children}
+      {loading && (
+        <span className="ml-2 inline-flex items-center align-middle" aria-hidden>
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-[color:rgba(11,11,12,0.9)]" />
+        </span>
+      )}
+      {ripples.map((r) => (
+        <span
+          key={r.id}
+          className="pointer-events-none absolute block rounded-full"
+          style={{
+            left: r.x - 2,
+            top: r.y - 2,
+            width: 4,
+            height: 4,
+            background: "rgba(0,0,0,0.15)",
+            animation: "ripple 600ms ease-out",
+          }}
+        />
+      ))}
+    </>
+  );
 
   return (
     <motion.div ref={ref} onMouseMove={onMove} onMouseLeave={onLeave} style={{ x: dxS, y: dyS }} className="inline-block">
-      <Link href={href} onClick={onClick} className="relative cta-ylw px-6 sm:px-8 py-3 sm:py-3.5 text-base sm:text-lg font-semibold inline-block overflow-hidden">
-        {children}
-        {ripples.map((r) => (
-          <span
-            key={r.id}
-            className="pointer-events-none absolute block rounded-full"
-            style={{
-              left: r.x - 2,
-              top: r.y - 2,
-              width: 4,
-              height: 4,
-              background: "rgba(0,0,0,0.15)",
-              animation: "ripple 600ms ease-out",
-            }}
-          />
-        ))}
-      </Link>
+      {href ? (
+        <Link href={disabled ? "#" : href} onClick={handleClick} className={commonClass} aria-disabled={disabled} tabIndex={disabled ? -1 : undefined}>
+          {Content}
+        </Link>
+      ) : (
+        <button type="button" onClick={handleClick} className={commonClass} disabled={disabled}>
+          {Content}
+        </button>
+      )}
       <style jsx>{`
         @keyframes ripple {
           from { transform: scale(1); opacity: 0.6; }

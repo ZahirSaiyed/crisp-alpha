@@ -10,10 +10,12 @@
   },
   "dependencies": {
     "@deepgram/sdk": "^4.11.2",
+    "comlink": "^4.4.2",
     "framer-motion": "^12.23.16",
     "next": "15.5.3",
     "react": "19.1.0",
-    "react-dom": "19.1.0"
+    "react-dom": "19.1.0",
+    "@google/genai": "^0.3.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
@@ -21,9 +23,12 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "depcheck": "^1.4.7",
     "eslint": "^9",
     "eslint-config-next": "15.5.3",
+    "knip": "^5.63.1",
     "tailwindcss": "^4",
+    "ts-prune": "^0.10.3",
     "typescript": "^5"
   }
 }

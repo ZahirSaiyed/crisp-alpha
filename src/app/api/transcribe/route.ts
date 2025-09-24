@@ -13,6 +13,31 @@ type DeepgramResult = {
   };
 };
 
+type Paragraph = { text?: string; start?: number; end?: number };
+
+type DgSentence = { text?: string; start?: number; end?: number };
+type DgParagraph = { sentences?: DgSentence[] };
+type DgParagraphs = { paragraphs?: DgParagraph[] };
+
+type DeepgramAlternativeWithParagraphs = DeepgramAlternative & { paragraphs?: DgParagraphs };
+
+function mapParagraphs(alt: DeepgramAlternativeWithParagraphs | undefined): Paragraph[] {
+  const out: Paragraph[] = [];
+  const paras = alt?.paragraphs?.paragraphs;
+  if (Array.isArray(paras)) {
+    for (const p of paras) {
+      const sents = Array.isArray(p?.sentences) ? p.sentences : [];
+      if (sents.length > 0) {
+        const text = sents.map((s) => (typeof s?.text === "string" ? s.text : "")).join(" ").trim();
+        const start = typeof sents[0]?.start === "number" ? sents[0].start : undefined;
+        const end = typeof sents[sents.length - 1]?.end === "number" ? sents[sents.length - 1].end : undefined;
+        out.push({ text, start, end });
+      }
+    }
+  }
+  return out;
+}
+
 export async function POST(request: NextRequest) {
   try {
     // If fixture mode is on, return the saved JSON from disk
@@ -26,11 +51,12 @@ export async function POST(request: NextRequest) {
         }
         const txt = fs.readFileSync(filePath, "utf8");
         const json = JSON.parse(txt) as DeepgramResult;
-        const alt = json?.results?.channels?.[0]?.alternatives?.[0];
+        const alt = json?.results?.channels?.[0]?.alternatives?.[0] as DeepgramAlternativeWithParagraphs | undefined;
         const transcript = alt?.transcript ?? undefined;
         const words = alt?.words ?? [];
-        return NextResponse.json({ transcript: transcript || "No speech detected", words, _raw: json, source: "fixture" });
-      } catch (e) {
+        const paragraphs: Paragraph[] = mapParagraphs(alt);
+        return NextResponse.json({ transcript: transcript || "No speech detected", words, paragraphs, _raw: json, source: "fixture" });
+      } catch {
         return NextResponse.json({ error: "Failed to load fixture" }, { status: 500 });
       }
     }
@@ -55,6 +81,7 @@ export async function POST(request: NextRequest) {
         model: "nova-2",
         smart_format: true,
         filler_words: true,
+        paragraphs: true,
       }
     );
 
@@ -84,10 +111,11 @@ export async function POST(request: NextRequest) {
     }
 
     const dg = result as unknown as DeepgramResult;
-    const alt: DeepgramAlternative | undefined = dg?.results?.channels?.[0]?.alternatives?.[0];
+    const alt = dg?.results?.channels?.[0]?.alternatives?.[0] as DeepgramAlternativeWithParagraphs | undefined;
     const transcript = alt?.transcript ?? undefined;
     const words = alt?.words ?? [];
-    return NextResponse.json({ transcript: transcript || "No speech detected", words, _raw: result, source: "live" });
+    const paragraphs: Paragraph[] = mapParagraphs(alt);
+    return NextResponse.json({ transcript: transcript || "No speech detected", words, paragraphs, _raw: result, source: "live" });
     
   } catch (error) {
     console.error("Transcription error:", error);

@@ -23,14 +23,20 @@ export default function AppHeader() {
         height,
       }}
     >
-      <div className="mx-auto max-w-7xl px-6 h-full flex items-center">
+      <div className="mx-auto max-w-7xl px-6 h-full flex items-center gap-3">
         <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.98 }}>
           <Link href="/" className="display-wordmark text-[color:var(--electric-pink)] text-3xl sm:text-5xl font-semibold tracking-wide">
             CRISP
           </Link>
         </motion.div>
-        <div className="ml-auto hidden sm:block text-sm text-[color:rgba(11,11,12,0.6)]">
-          Train smarter.
+        <div className="ml-auto hidden sm:flex items-center gap-2">
+          <a
+            href="#waitlist"
+            className="px-4 py-2 rounded-full font-semibold text-[13px]"
+            style={{ background: "var(--bright-purple)", color: "white", boxShadow: "0 10px 28px rgba(122,92,255,0.28)" }}
+          >
+            Get on the waitlist
+          </a>
         </div>
       </div>
       <MotionProgressBar />

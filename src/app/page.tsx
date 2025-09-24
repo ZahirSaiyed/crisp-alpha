@@ -1,4 +1,3 @@
-import Link from "next/link";
 import MagneticCTA from "../components/MagneticCTA";
 
 export default function Page() {

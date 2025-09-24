@@ -24,7 +24,7 @@ type EnergyAnalysis = {
 type Phase = "idle" | "recording" | "ready" | "playing";
 const MAX_SECONDS = 90;
 
-export default function Recorder({ stickyMobileCTA = true, appearance = "onLight", onPhaseChange }: { stickyMobileCTA?: boolean; appearance?: "onLight" | "onDark"; onPhaseChange?: (p: Phase) => void }) {
+export default function Recorder({ stickyMobileCTA = true, appearance = "onLight", onPhaseChange, disableLegacyResults = false, onTranscript }: { stickyMobileCTA?: boolean; appearance?: "onLight" | "onDark"; onPhaseChange?: (p: Phase) => void; disableLegacyResults?: boolean; onTranscript?: (p: { transcript: string | null; words: Array<{ word: string; start?: number; end?: number }> | null; paragraphs?: Array<{ text: string; start?: number; end?: number }> | null; durationSec?: number | null; }) => void }) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState<string | null>(null);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
@@ -35,6 +35,7 @@ export default function Recorder({ stickyMobileCTA = true, appearance = "onLight
   const [transcriptionError, setTranscriptionError] = useState<string | null>(null);
   const [audioDurationSec, setAudioDurationSec] = useState<number | null>(null);
   const [dgWords, setDgWords] = useState<Array<{ word: string; start?: number; end?: number; confidence?: number }> | null>(null);
+  const [dgParagraphs, setDgParagraphs] = useState<Array<{ text: string; start?: number; end?: number }> | null>(null);
   const [isAnalyzingEnergy, setIsAnalyzingEnergy] = useState<boolean>(false);
   const [energyError, setEnergyError] = useState<string | null>(null);
   const [energy, setEnergy] = useState<EnergyAnalysis | null>(null);
@@ -56,6 +57,18 @@ export default function Recorder({ stickyMobileCTA = true, appearance = "onLight
   useEffect(() => {
     onPhaseChange?.(phase);
   }, [phase, onPhaseChange]);
+
+  useEffect(() => {
+    // Allow external trigger to begin/stop recording
+    function onBegin() { startRecording(); }
+    function onStop() { stopRecording(); }
+    window.addEventListener("app:begin-recording", onBegin as EventListener);
+    window.addEventListener("app:stop-recording", onStop as EventListener);
+    return () => {
+      window.removeEventListener("app:begin-recording", onBegin as EventListener);
+      window.removeEventListener("app:stop-recording", onStop as EventListener);
+    };
+  }, []);
 
   // Pick a supported audio MIME in priority order (broadest first)
   function pickSupportedMime(): string | null {
@@ -110,6 +123,7 @@ export default function Recorder({ stickyMobileCTA = true, appearance = "onLight
     setTranscriptionError(null);
     setTranscript(null);
     setDgWords(null);
+    setDgParagraphs(null);
     setIsFixtureResponse(false);
 
     try {
@@ -150,6 +164,18 @@ export default function Recorder({ stickyMobileCTA = true, appearance = "onLight
         );
       }
 
+      if (Array.isArray(data.paragraphs)) {
+        setDgParagraphs(
+          data.paragraphs.map((p: unknown) => {
+            const obj = (p ?? {}) as Record<string, unknown>;
+            const text = typeof obj.text === "string" ? obj.text : String(obj.text ?? "");
+            const start = typeof obj.start === "number" ? obj.start : undefined;
+            const end = typeof obj.end === "number" ? obj.end : undefined;
+            return { text, start, end };
+          })
+        );
+      }
+
       // In fixture mode, force duration from Deepgram timings to match the fixture
       if (isFixture && Array.isArray(data.words)) {
         let lastEnd = 0;
@@ -159,6 +185,29 @@ export default function Recorder({ stickyMobileCTA = true, appearance = "onLight
         }
         if (lastEnd > 0) setAudioDurationSec(lastEnd);
       }
+
+      // Notify parent with transcript, words, and paragraphs
+      try {
+        const wordsArr = Array.isArray(data.words)
+          ? (data.words.map((raw: unknown) => {
+              const wObj = (raw ?? {}) as Record<string, unknown>;
+              const word = typeof wObj.word === "string" ? wObj.word : String(wObj.word ?? "");
+              const start = typeof wObj.start === "number" ? wObj.start : undefined;
+              const end = typeof wObj.end === "number" ? wObj.end : undefined;
+              return { word, start, end };
+            }) as Array<{ word: string; start?: number; end?: number }>)
+          : null;
+        const parasArr = Array.isArray(data.paragraphs)
+          ? (data.paragraphs.map((raw: unknown) => {
+              const pObj = (raw ?? {}) as Record<string, unknown>;
+              const text = typeof pObj.text === "string" ? pObj.text : String(pObj.text ?? "");
+              const start = typeof pObj.start === "number" ? pObj.start : undefined;
+              const end = typeof pObj.end === "number" ? pObj.end : undefined;
+              return { text, start, end };
+            }) as Array<{ text: string; start?: number; end?: number }>)
+          : null;
+        onTranscript?.({ transcript: (data.transcript as string) ?? null, words: wordsArr, paragraphs: parasArr, durationSec: audioDurationSec });
+      } catch {}
 
       // Run energy analysis after transcription so we can align hotspots to content words
       try {
@@ -824,6 +873,7 @@ export default function Recorder({ stickyMobileCTA = true, appearance = "onLight
     setTranscriptionError(null);
     setAudioDurationSec(null);
     setDgWords(null);
+    setDgParagraphs(null);
 
     // Feature detection
     if (typeof MediaRecorder === "undefined" || !navigator?.mediaDevices?.getUserMedia) {
@@ -934,6 +984,7 @@ export default function Recorder({ stickyMobileCTA = true, appearance = "onLight
     setTranscriptionError(null);
     setAudioDurationSec(null);
     setDgWords(null);
+    setDgParagraphs(null);
   }
 
   const canRecord =
@@ -959,6 +1010,7 @@ export default function Recorder({ stickyMobileCTA = true, appearance = "onLight
     setPhase("idle");
     setTranscript(null);
     setDgWords(null);
+    setDgParagraphs(null);
     setBlobUrl(null);
     setAudioDurationSec(null);
     setEnergy(null);
@@ -1140,7 +1192,7 @@ export default function Recorder({ stickyMobileCTA = true, appearance = "onLight
         />
       )}
  
-      {transcript && (
+      {!disableLegacyResults && transcript && (
     <>
       {/* Bold coach banner (not a tile) */}
       <div className="mx-auto max-w-4xl px-2">
