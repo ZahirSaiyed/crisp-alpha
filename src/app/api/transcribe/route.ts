@@ -89,12 +89,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Log the Deepgram result (trimmed)
-    try {
-      const preview = JSON.stringify(result).slice(0, 5000);
-      console.log("Deepgram result preview:", preview);
-    } catch {}
-
     // Optionally save full result to fixture file on disk when SAVE_FIXTURE=true
     try {
       if (process.env.SAVE_FIXTURE === "true") {
@@ -104,7 +98,6 @@ export async function POST(request: NextRequest) {
         const filePath = path.join(fixturesDir, "transcript.json");
         if (!fs.existsSync(fixturesDir)) fs.mkdirSync(fixturesDir, { recursive: true });
         fs.writeFileSync(filePath, JSON.stringify(result, null, 2), "utf8");
-        console.log(`Saved Deepgram fixture to ${filePath}`);
       }
     } catch (e) {
       console.warn("Could not save fixture:", e);
