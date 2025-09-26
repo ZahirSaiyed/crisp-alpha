@@ -24,7 +24,7 @@ type EnergyAnalysis = {
 type Phase = "idle" | "recording" | "ready" | "playing";
 const MAX_SECONDS = 90;
 
-export default function Recorder({ stickyMobileCTA = true, appearance = "onLight", onPhaseChange, disableLegacyResults = false, onTranscript }: { stickyMobileCTA?: boolean; appearance?: "onLight" | "onDark"; onPhaseChange?: (p: Phase) => void; disableLegacyResults?: boolean; onTranscript?: (p: { transcript: string | null; words: Array<{ word: string; start?: number; end?: number }> | null; paragraphs?: Array<{ text: string; start?: number; end?: number }> | null; durationSec?: number | null; }) => void }) {
+export default function Recorder({ stickyMobileCTA = true, appearance = "onLight", onPhaseChange, disableLegacyResults = false, onTranscript, onTranscribingChange }: { stickyMobileCTA?: boolean; appearance?: "onLight" | "onDark"; onPhaseChange?: (p: Phase) => void; disableLegacyResults?: boolean; onTranscript?: (p: { transcript: string | null; words: Array<{ word: string; start?: number; end?: number }> | null; paragraphs?: Array<{ text: string; start?: number; end?: number }> | null; durationSec?: number | null; }) => void; onTranscribingChange?: (loading: boolean) => void }) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState<string | null>(null);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
@@ -120,6 +120,7 @@ export default function Recorder({ stickyMobileCTA = true, appearance = "onLight
   async function transcribeAudio(sourceBlob?: Blob) {
     if (!sourceBlob && !blobUrl) return;
     setIsTranscribing(true);
+    try { onTranscribingChange?.(true); } catch {}
     setTranscriptionError(null);
     setTranscript(null);
     setDgWords(null);
@@ -227,6 +228,7 @@ export default function Recorder({ stickyMobileCTA = true, appearance = "onLight
       setTranscriptionError(errorMessage);
     } finally {
       setIsTranscribing(false);
+      try { onTranscribingChange?.(false); } catch {}
     }
   }
 

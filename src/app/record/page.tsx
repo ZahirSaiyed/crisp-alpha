@@ -12,6 +12,7 @@ import MetricsTile from "../../components/MetricsTile";
 import { detectFillerCounts, detectPauses, WordToken } from "../../lib/analysis";
 import FeedbackTile from "../../components/FeedbackTile";
 import PracticeAnswerTile from "../../components/PracticeAnswerTile";
+import LoadingOverlay from "../../components/LoadingOverlay";
 
 type MetricsRemote = Comlink.Remote<import("../../workers/metrics.worker").MetricsWorker>;
 
@@ -160,6 +161,7 @@ export default function RecordPage() {
   const [aiCoach, setAiCoach] = useState<{ headline?: string; subtext?: string } | null>(null);
   const [aiPractice, setAiPractice] = useState<string | null>(null);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [transcribingLoading, setTranscribingLoading] = useState(false);
 
   const words = Array.isArray(tokens) ? tokens : [];
   const pauseEvents = Array.isArray(words) && words.length > 0 ? detectPauses(words as WordToken[], 0.5) : (coreSummary?.pauses || []);
@@ -171,7 +173,23 @@ export default function RecordPage() {
   })();
   const fillers = detectFillerCounts(words);
 
-  const essentialsReady = Boolean(audioUrl && (insight || aiCoach) && typeof talkTimeSec === "number" && !feedbackLoading);
+  // Smart overlay visibility: show immediately on load start; hide with a tiny delay to avoid flicker
+  const [overlayVisible, setOverlayVisible] = useState(false);
+  const resultsLoading = transcribingLoading || feedbackLoading;
+  const essentialsReady = Boolean(audioUrl && (insight || aiCoach) && typeof talkTimeSec === "number");
+
+  useEffect(() => {
+    const shouldShow = Boolean(audioUrl) && (!essentialsReady || resultsLoading);
+    if (shouldShow) {
+      setOverlayVisible(true);
+      return;
+    }
+    // Delay hiding a touch to ensure content paints
+    const t = window.setTimeout(() => setOverlayVisible(false), 160);
+    return () => window.clearTimeout(t);
+  }, [audioUrl, essentialsReady, resultsLoading]);
+
+  
 
   return (
     <main className="min-h-screen bg-white text-[color:var(--ink)]">
@@ -182,6 +200,7 @@ export default function RecordPage() {
           appearance="onLight"
           disableLegacyResults={true}
           onPhaseChange={handlePhaseChange}
+          onTranscribingChange={(v) => setTranscribingLoading(Boolean(v))}
           onTranscript={({ transcript, words, paragraphs, durationSec }) => {
             setTokens(words ?? null);
             setParagraphs(paragraphs ?? null);
@@ -221,16 +240,7 @@ export default function RecordPage() {
 
       {audioUrl && (
         <section className="relative mx-auto max-w-5xl px-6 py-8 grid grid-cols-1 gap-6">
-          {!essentialsReady && (
-            <div className="absolute inset-0 z-10 flex items-center justify-center">
-              <div className="w-full h-full rounded-[20px] bg-white/80 backdrop-blur flex items-center justify-center">
-                <div className="flex items-center gap-3 text-[14px] text-[color:rgba(11,11,12,0.7)]">
-                  <span className="inline-block w-5 h-5 rounded-full border-2 border-[color:var(--muted-2)] border-t-[color:var(--bright-purple)] animate-spin" />
-                  Preparing your insights…
-                </div>
-              </div>
-            </div>
-          )}
+          <LoadingOverlay show={overlayVisible} label={resultsLoading ? "Analyzing recording…" : "Preparing your insights…"} />
 
           {(aiCoach || insight) && (
             <div className="rounded-[20px] shadow-[0_12px_40px_rgba(0,0,0,0.06)] bg-white/90 backdrop-blur border border-[color:var(--muted-2)] p-5 sm:p-6">
