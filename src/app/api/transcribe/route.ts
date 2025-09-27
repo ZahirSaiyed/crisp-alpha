@@ -1,5 +1,6 @@
 import { createClient } from "@deepgram/sdk";
 import { NextRequest, NextResponse } from "next/server";
+import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 
 export const runtime = "nodejs";
 
@@ -40,6 +41,49 @@ function mapParagraphs(alt: DeepgramAlternativeWithParagraphs | undefined): Para
 
 export async function POST(request: NextRequest) {
   try {
+    // New path: JSON body with S3 object key -> fetch from S3
+    const contentType = request.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      const body = await request.json().catch(() => ({} as unknown));
+      const obj = (body ?? {}) as Record<string, unknown>;
+      const objectKey = typeof obj.objectKey === "string" ? obj.objectKey : undefined;
+      if (objectKey) {
+        const bucket = process.env.S3_BUCKET;
+        const region = process.env.S3_REGION;
+        if (!bucket || !region) {
+          return NextResponse.json({ error: "S3 not configured" }, { status: 500 });
+        }
+        const s3 = new S3Client({ region });
+        const getCmd = new GetObjectCommand({ Bucket: bucket, Key: objectKey });
+        const res = await s3.send(getCmd);
+        const stream = res.Body as unknown as NodeJS.ReadableStream | undefined;
+        if (!stream) {
+          return NextResponse.json({ error: "Failed to read audio from storage" }, { status: 500 });
+        }
+        const audioBuffer = await streamToBuffer(stream);
+
+        const deepgram = createClient(process.env.DEEPGRAM_API_KEY || "");
+        const { result, error } = await deepgram.listen.prerecorded.transcribeFile(
+          audioBuffer,
+          {
+            model: "nova-2",
+            smart_format: true,
+            filler_words: true,
+            paragraphs: true,
+          }
+        );
+        if (error) {
+          return NextResponse.json({ error: error.message }, { status: 500 });
+        }
+        const dg = result as unknown as DeepgramResult;
+        const alt = dg?.results?.channels?.[0]?.alternatives?.[0] as DeepgramAlternativeWithParagraphs | undefined;
+        const transcript = alt?.transcript ?? undefined;
+        const words = alt?.words ?? [];
+        const paragraphs: Paragraph[] = mapParagraphs(alt);
+        return NextResponse.json({ transcript: transcript || "No speech detected", words, paragraphs, _raw: result, source: "s3" });
+      }
+    }
+
     // If fixture mode is on, return the saved JSON from disk
     if (process.env.USE_FIXTURE === "true") {
       try {
@@ -118,3 +162,12 @@ export async function POST(request: NextRequest) {
     );
   }
 } 
+
+async function streamToBuffer(stream: NodeJS.ReadableStream): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  return await new Promise<Buffer>((resolve, reject) => {
+    stream.on("data", (d) => chunks.push(Buffer.isBuffer(d) ? d : Buffer.from(d)));
+    stream.once("end", () => resolve(Buffer.concat(chunks)));
+    stream.once("error", reject);
+  });
+}

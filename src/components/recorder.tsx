@@ -130,22 +130,51 @@ export default function Recorder({ stickyMobileCTA = true, appearance = "onLight
     try {
       // Resolve audio blob either from provided source or from current blobUrl
       const audioBlob = sourceBlob ? sourceBlob : await (await fetch(blobUrl as string)).blob();
-      
-      // Create FormData to send to API route
-      const formData = new FormData();
-      formData.append("audio", audioBlob, "recording.webm");
-      
-      // Call our API route
-      const apiResponse = await fetch("/api/transcribe", {
-        method: "POST",
-        body: formData,
-      });
-      
-      const data = await apiResponse.json();
-      
-      if (!apiResponse.ok) {
-        throw new Error(data.error || "Transcription failed");
+
+      // Primary path: Presigned upload to storage, then send objectKey for STT
+      let data: any;
+      try {
+        const pre = await fetch("/api/upload/presign", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contentType: audioBlob.type || "audio/webm" }),
+        });
+        if (!pre.ok) throw new Error("Presign failed");
+        const { uploadUrl, objectKey } = await pre.json();
+        if (!uploadUrl || !objectKey) throw new Error("Invalid presign response");
+        // Upload directly to storage
+        const putRes = await fetch(uploadUrl, {
+          method: "PUT",
+          headers: { "Content-Type": audioBlob.type || "audio/webm" },
+          body: audioBlob,
+        });
+        if (!putRes.ok) throw new Error("Upload to storage failed");
+
+        // Request transcription by objectKey
+        const apiResponse = await fetch("/api/transcribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ objectKey }),
+        });
+        data = await apiResponse.json();
+        if (!apiResponse.ok) {
+          throw new Error(data.error || "Transcription failed");
+        }
+      } catch (e) {
+        // Optional dev fallback to legacy direct upload; must be explicitly enabled to avoid privacy violations
+        const allowFallback = process.env.NEXT_PUBLIC_ALLOW_DIRECT_UPLOAD_FALLBACK === "true";
+        if (!allowFallback) {
+          throw e instanceof Error ? e : new Error("Upload or transcription failed");
+        }
+        const formData = new FormData();
+        formData.append("audio", audioBlob, "recording.webm");
+        const apiResponse = await fetch("/api/transcribe", { method: "POST", body: formData });
+        data = await apiResponse.json();
+        if (!apiResponse.ok) {
+          throw new Error(data.error || "Transcription failed");
+        }
       }
+
       
       // Track source to handle duration in fixture mode
       const isFixture = data?.source === "fixture";
