@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import * as Comlink from "comlink";
 import { decodeToPCM16kMono } from "../../lib/audio";
-import { DeliverySummary, Goal } from "../../lib/delivery";
+import { DeliverySummary } from "../../lib/delivery";
 import TranscriptPlayerCard from "../../components/TranscriptPlayerCard";
 import PromptSwiper from "../../components/PromptSwiper";
 import Recorder, { RecorderHandle } from "../../components/recorder";
@@ -212,8 +212,6 @@ export default function RecordPage() {
     startCompute(url, blob);
   }, [startCompute]);
 
-  const goal: Goal = "Authority";
-  const fullSummary = coreSummary as DeliverySummary | null;
   const [aiCoach, setAiCoach] = useState<{ headline?: string | undefined; subtext?: string | undefined } | null>(null);
   const [aiPractice, setAiPractice] = useState<string | null>(null);
   // Track external loading states only for side-effects (no render dependency)
