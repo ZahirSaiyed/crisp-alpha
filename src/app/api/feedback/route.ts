@@ -90,9 +90,9 @@ function tryParseJson(raw: string): unknown | null {
   
   // Try to extract JSON from markdown code blocks
   const codeBlockMatch = raw.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
-  if (codeBlockMatch) {
+  if (codeBlockMatch && codeBlockMatch[1]) {
     try {
-      return JSON.parse(codeBlockMatch[1]);
+      return JSON.parse(codeBlockMatch[1] as string);
     } catch {}
   }
   
