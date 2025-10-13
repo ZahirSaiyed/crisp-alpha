@@ -4,7 +4,6 @@ import React, { useCallback, useEffect, useRef, useState, useMemo } from "react"
 import * as Comlink from "comlink";
 import { decodeToPCM16kMono } from "../../lib/audio";
 import { DeliverySummary, Goal } from "../../lib/delivery";
-import { takeaway } from "../../lib/takeaway";
 import TranscriptPlayerCard from "../../components/TranscriptPlayerCard";
 import PromptSwiper from "../../components/PromptSwiper";
 import Recorder, { RecorderHandle } from "../../components/recorder";
@@ -215,7 +214,6 @@ export default function RecordPage() {
 
   const goal: Goal = "Authority";
   const fullSummary = coreSummary as DeliverySummary | null;
-  const insight = fullSummary ? takeaway(fullSummary, goal) : null;
   const [aiCoach, setAiCoach] = useState<{ headline?: string | undefined; subtext?: string | undefined } | null>(null);
   const [aiPractice, setAiPractice] = useState<string | null>(null);
   // Track external loading states only for side-effects (no render dependency)
@@ -380,11 +378,11 @@ export default function RecordPage() {
         <section className="relative mx-auto max-w-5xl px-6 py-8 grid grid-cols-1 gap-6">
           <LoadingOverlay show={overlayVisible} label="Preparing your insights…" />
 
-          {(aiCoach || insight) && (
+          {aiCoach && (
             <div className="rounded-[20px] shadow-[0_12px_40px_rgba(0,0,0,0.06)] bg-white/90 backdrop-blur border border-[color:var(--muted-2)] p-5 sm:p-6">
               <div className="text-[11px] uppercase tracking-[0.08em] text-[color:var(--bright-purple)] mb-2 font-medium">Coach Insight</div>
-              <div className="text-[22px] sm:text-[26px] font-extrabold leading-snug tracking-[-0.01em]">{aiCoach?.headline || insight?.headline}</div>
-              <div className="text-sm sm:text-base mt-2 text-[color:rgba(11,11,12,0.75)]">{aiCoach?.subtext || insight?.subtext}</div>
+              <div className="text-[22px] sm:text-[26px] font-extrabold leading-snug tracking-[-0.01em]">{aiCoach.headline}</div>
+              <div className="text-sm sm:text-base mt-2 text-[color:rgba(11,11,12,0.75)]">{aiCoach.subtext}</div>
               {selectedPrompt && (
                 <div className="mt-3 text-xs text-[color:rgba(11,11,12,0.55)]">Prompt: {selectedPrompt.title}</div>
               )}
