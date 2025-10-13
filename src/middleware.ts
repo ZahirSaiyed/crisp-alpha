@@ -22,7 +22,7 @@ const CSP_CONFIG = {
   ],
   production: [
     "default-src 'self'",
-    "script-src 'self'", // No unsafe-* in production
+    "script-src 'self' 'unsafe-inline'", // Next.js requires inline scripts for hydration
     "style-src 'self' 'unsafe-inline'", // Still needed for Tailwind
     "img-src 'self' blob: data:",
     "media-src 'self' blob:",
