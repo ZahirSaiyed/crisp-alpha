@@ -416,7 +416,6 @@ export default function RecordPage() {
               }
               if (typeof s?.improvedAnswer === "string") setAiPractice(s.improvedAnswer);
             }}
-            onLoadingChange={(v) => setFeedbackLoading(Boolean(v))}
           />
           
           {/* Privacy disclaimer */}
