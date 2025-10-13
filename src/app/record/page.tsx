@@ -18,7 +18,7 @@ type MetricsRemote = Comlink.Remote<import("../../workers/metrics.worker").Metri
 
 type Paragraph = { text: string; start?: number; end?: number };
 
-type Prompt = { id: string; title: string; subtitle?: string; category?: string; icon?: string };
+type Prompt = { id: string; title: string; subtitle?: string | undefined; category?: string | undefined; icon?: string | undefined };
 
 type Persona = "jobSeeker" | "productManager" | "surprise";
 
