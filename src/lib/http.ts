@@ -1,22 +1,16 @@
 import { NextResponse } from 'next/server'
-import { z } from 'zod'
 
-// Standard error response schema
-const ErrorResponseSchema = z.object({
-  code: z.string(),
-  message: z.string(),
-  rid: z.string().optional(),
-})
+// Types (no runtime Zod schemas needed here)
+export type ErrorResponse = {
+  code: string
+  message: string
+  rid?: string
+}
 
-export type ErrorResponse = z.infer<typeof ErrorResponseSchema>
-
-// Success response schema
-const SuccessResponseSchema = z.object({
-  data: z.unknown().optional(),
-  rid: z.string().optional(),
-})
-
-export type SuccessResponse = z.infer<typeof SuccessResponseSchema>
+export type SuccessResponse = {
+  data?: unknown
+  rid?: string
+}
 
 // HTTP status code helpers
 export const HTTP_STATUS = {
@@ -138,16 +132,4 @@ export function gatewayTimeout(message = 'Gateway Timeout', code = 'GATEWAY_TIME
 }
 
 // Validation helpers
-export function validateRequest<T>(schema: z.ZodSchema<T>, data: unknown): { success: true; data: T } | { success: false; error: NextResponse } {
-  const result = schema.safeParse(data)
-  if (result.success) {
-    return { success: true, data: result.data }
-  }
-  return {
-    success: false,
-    error: badRequest(
-      `Validation failed: ${result.error.issues.map((e: z.ZodIssue) => `${e.path.join('.')}: ${e.message}`).join(', ')}`,
-      'VALIDATION_ERROR'
-    )
-  }
-}
+// validateRequest removed; perform validation inline where needed

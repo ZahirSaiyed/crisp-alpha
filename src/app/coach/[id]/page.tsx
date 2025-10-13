@@ -23,10 +23,10 @@ export default function CoachPage() {
     async function load() {
       try {
         const res = await fetch(`/api/coach/${id}`, { cache: "no-store" });
-        const data = await res.json();
+        const data: { status?: "pending"|"ready"|"error"; coach?: CoachPayload } = await res.json();
         if (canceled) return;
-        setStatus((data?.status as any) || "pending");
-        if (data?.coach) setCoach(data.coach as CoachPayload);
+        setStatus(data?.status ?? "pending");
+        if (data?.coach) setCoach(data.coach);
       } catch {
         if (!canceled) setStatus("error");
       }

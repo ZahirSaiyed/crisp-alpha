@@ -9,17 +9,18 @@ type Dir = "left" | "right";
 
 export default function PromptSwiper({ prompts, onSelect }: { prompts: Prompt[]; onSelect: (p: Prompt) => void }) {
   const [index, setIndex] = useState(0);
-  const [enterDir, setEnterDir] = useState<Dir>("right");
-  const [exitDir, setExitDir] = useState<Dir>("left");
+  const [enterDir] = useState<Dir>("right");
+  const [exitDir] = useState<Dir>("left");
   const deckRef = useRef<HTMLDivElement | null>(null);
   const current = prompts[index];
 
-  function wrap(i: number) { return (i + prompts.length) % prompts.length; }
-  const goNext = useCallback(() => setIndex((i) => wrap(i + 1)), [prompts.length]);
-  const goPrev = useCallback(() => setIndex((i) => wrap(i - 1)), [prompts.length]);
-  function choose(p: Prompt) { onSelect(p); }
+  const wrap = useCallback((i: number) => (i + prompts.length) % prompts.length, [prompts.length]);
+  const goNext = useCallback(() => setIndex((i) => wrap(i + 1)), [wrap]);
+  const goPrev = useCallback(() => setIndex((i) => wrap(i - 1)), [wrap]);
+  const choose = useCallback((p: Prompt) => { onSelect(p); }, [onSelect]);
 
   const primaryAction = useCallback(() => {
+    if (!current) return;
     choose(current);
   }, [current, choose]);
 

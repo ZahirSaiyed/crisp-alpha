@@ -139,22 +139,22 @@ export default function RecordPage() {
         throw new Error('Invalid or empty blob provided');
       }
       
-      console.log('🔊 Decoding audio...');
+      console.warn('🔊 Decoding audio...');
       const { pcm, sampleRate, durationSec } = await decodeToPCM16kMono(blob);
-      console.log('✅ Audio decoded, duration:', durationSec);
+      console.warn('✅ Audio decoded, duration:', durationSec);
       
       // Set duration immediately so overlay can hide
       setDurationSec(durationSec);
       
       try {
-        console.log('👷 Ensuring worker...');
+        console.warn('👷 Ensuring worker...');
         const api = ensureWorker();
         if (!api) throw new Error("Worker unavailable");
-        console.log('✅ Worker available');
+        console.warn('✅ Worker available');
         
-        console.log('🧮 Computing metrics...');
+        console.warn('🧮 Computing metrics...');
         const summary = await api.computeCoreFromPcm(pcm, sampleRate);
-        console.log('✅ Metrics computed:', summary);
+        console.warn('✅ Metrics computed:', summary);
         
         const delivery: Partial<DeliverySummary> = {
           endRushIndex: summary.endRushIndexApprox ?? 0,
@@ -162,7 +162,7 @@ export default function RecordPage() {
           durationSec,
         } as Partial<DeliverySummary>;
         
-        console.log('💾 Setting core summary...');
+        console.warn('💾 Setting core summary...');
         setCoreSummary(delivery);
       } catch (workerError) {
         console.warn('⚠️ Worker failed, continuing without advanced metrics:', workerError);
@@ -175,7 +175,7 @@ export default function RecordPage() {
         setCoreSummary(delivery);
       }
       
-      console.log('✅ State updated successfully');
+      console.warn('✅ State updated successfully');
     } catch (error) {
       console.error('❌ Audio processing failed:', error);
       // Set minimal state to prevent getting stuck
@@ -183,45 +183,44 @@ export default function RecordPage() {
       setCoreSummary({ endRushIndex: 0, pauses: [], durationSec: 0 });
     } finally {
       computeInFlightRef.current = false;
-      console.log('🏁 startCompute finished');
+      console.warn('🏁 startCompute finished');
     }
   }
 
   const handlePhaseChange = useCallback((p: string) => {
-    console.log('🔄 Phase changed to:', p);
+    console.warn('🔄 Phase changed to:', p);
     currentPhaseRef.current = p;
   }, []);
 
   const handleBlobUrlChange = useCallback((url: string | null, blob: Blob | null | undefined) => {
-    console.log('🔍 handleBlobUrlChange called with:', url, 'blob:', blob);
-    console.log('🔍 Current phase:', currentPhaseRef.current);
-    console.log('🔍 Last URL:', lastUrlRef.current);
-    console.log('🔍 Compute in flight:', computeInFlightRef.current);
+    console.warn('🔍 handleBlobUrlChange called with:', url, 'blob:', blob);
+    console.warn('🔍 Current phase:', currentPhaseRef.current);
+    console.warn('🔍 Last URL:', lastUrlRef.current);
+    console.warn('🔍 Compute in flight:', computeInFlightRef.current);
     
     if (!url || !blob || lastUrlRef.current === url || computeInFlightRef.current) {
-      console.log('🔍 Early return - conditions not met');
+      console.warn('🔍 Early return - conditions not met');
       return;
     }
     if (currentPhaseRef.current !== "ready") {
-      console.log('🔍 Early return - phase not ready');
+      console.warn('🔍 Early return - phase not ready');
       return;
     }
     
-    console.log('🚀 Starting compute with URL:', url, 'and blob');
+    console.warn('🚀 Starting compute with URL:', url, 'and blob');
     lastUrlRef.current = url;
     setAudioUrl(url);
     startCompute(url, blob);
-  }, []);
+  }, [startCompute]);
 
   const goal: Goal = "Authority";
   const fullSummary = coreSummary as DeliverySummary | null;
   const insight = fullSummary ? takeaway(fullSummary, goal) : null;
   const [aiCoach, setAiCoach] = useState<{ headline?: string; subtext?: string } | null>(null);
   const [aiPractice, setAiPractice] = useState<string | null>(null);
-  const [feedbackLoading, setFeedbackLoading] = useState(false);
-  const [transcribingLoading, setTranscribingLoading] = useState(false);
+  // Track external loading states only for side-effects (no render dependency)
 
-  const words = Array.isArray(tokens) ? tokens : [];
+  const words = useMemo(() => (Array.isArray(tokens) ? tokens : []), [tokens]);
   const pauseEvents = Array.isArray(words) && words.length > 0 ? detectPauses(words as WordToken[], 0.5) : (coreSummary?.pauses || []);
   const talkTimeSec = typeof durationSec === "number" ? durationSec : (words.length > 0 ? Math.max(...words.map(w => (w.end ?? w.start) || 0)) : null);
   const wpm = (() => {
@@ -246,7 +245,7 @@ export default function RecordPage() {
   );
 
   // Debug metrics
-  console.log('📊 Metrics debug:', {
+  console.warn('📊 Metrics debug:', {
     talkTimeSec,
     tokensLength: tokens?.length,
     rawTranscriptLength: rawTranscript?.length,

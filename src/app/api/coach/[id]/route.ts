@@ -1,14 +1,8 @@
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { ok, badRequest, serverError } from '../../../../lib/http'
+import { badRequest, serverError } from '../../../../lib/http'
 import { logError } from '../../../../lib/log'
 import { getRequestId } from '../../../../lib/context'
-
-// Zod schemas for validation
-const CoachStatusSchema = z.object({
-  status: z.enum(['pending', 'ready', 'error']),
-  coach: z.unknown().optional(),
-})
 
 const CoachResponseSchema = z.object({
   status: z.enum(['pending', 'ready', 'error']),

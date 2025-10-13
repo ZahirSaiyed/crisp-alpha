@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getSession } from "../../../lib/sessionStore";
 import TranscriptPanel from "../../../components/TranscriptPanel";

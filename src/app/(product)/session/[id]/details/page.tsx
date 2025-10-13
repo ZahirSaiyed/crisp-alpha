@@ -1,11 +1,7 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { getSession } from "../../../../../lib/sessionStore";
-import TimelineStrip from "../../../../../components/TimelineStrip";
-import TranscriptPanel from "../../../../../components/TranscriptPanel";
-import { detectPauses } from "../../../../../lib/analysis";
 
 export default function DetailsPage() {
   const params = useParams();
