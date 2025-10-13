@@ -128,7 +128,7 @@ export default function RecordPage() {
 
   const startCompute = useCallback(async (url: string, blob: Blob) => {
     try {
-      console.log('🎯 startCompute called with URL:', url, 'and blob size:', blob.size);
+      console.warn('🎯 startCompute called with URL:', url, 'and blob size:', blob.size);
       computeInFlightRef.current = true;
       
       // Validate inputs
