@@ -77,7 +77,7 @@ ${answer}
   return base;
 }
 
-function tokensToPlainText(tokens?: Array<{ word?: string }>): string {
+function tokensToPlainText(tokens?: Array<{ word?: string | undefined }>): string {
   if (!Array.isArray(tokens)) return "";
   return tokens.map((t) => (t?.word || "")).join(" ").trim();
 }
