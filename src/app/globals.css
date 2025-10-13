@@ -44,6 +44,7 @@
   --muted-2: #D9DBE1;
 
   --ok: #12B886;
+  --accent-grn: #12B886;
   --warn: #FFB800;
   --bad: #FF5C5C;
 }
@@ -196,6 +197,7 @@ body {
   --muted-2: #D9DBE1;
 
   --ok: #12B886;
+  --accent-grn: #12B886;
   --warn: #FFB800;
   --bad: #FF5C5C;
 }
