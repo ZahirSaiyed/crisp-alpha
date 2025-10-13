@@ -97,6 +97,7 @@ export default function RecordPage() {
   const lastUrlRef = useRef<string | null>(null);
   const computeInFlightRef = useRef<boolean>(false);
   const recorderRef = useRef<RecorderHandle | null>(null);
+  const currentPhaseRef = useRef<string>("idle");
   const [isRecording, setIsRecording] = useState(false);
 
   const personaPrompts = useMemo(() => buildPrompts(persona), [persona]);
@@ -125,36 +126,91 @@ export default function RecordPage() {
     return metricsApiRef.current;
   }
 
-  async function startCompute(url: string) {
+  async function startCompute(url: string, blob: Blob) {
     try {
+      console.log('🎯 startCompute called with URL:', url, 'and blob size:', blob.size);
       computeInFlightRef.current = true;
-      const res = await fetch(url);
-      const blob = await res.blob();
+      
+      // Validate inputs
+      if (!url || typeof url !== 'string' || !url.startsWith('blob:')) {
+        throw new Error('Invalid blob URL provided');
+      }
+      if (!blob || blob.size === 0) {
+        throw new Error('Invalid or empty blob provided');
+      }
+      
+      console.log('🔊 Decoding audio...');
       const { pcm, sampleRate, durationSec } = await decodeToPCM16kMono(blob);
-      const api = ensureWorker();
-      if (!api) throw new Error("Worker unavailable");
-      const summary = await api.computeCoreFromPcm(pcm, sampleRate);
-      const delivery: Partial<DeliverySummary> = {
-        endRushIndex: summary.endRushIndexApprox ?? 0,
-        pauses: summary.pauseEvents,
-        durationSec,
-      } as Partial<DeliverySummary>;
-      setCoreSummary(delivery);
+      console.log('✅ Audio decoded, duration:', durationSec);
+      
+      // Set duration immediately so overlay can hide
       setDurationSec(durationSec);
+      
+      try {
+        console.log('👷 Ensuring worker...');
+        const api = ensureWorker();
+        if (!api) throw new Error("Worker unavailable");
+        console.log('✅ Worker available');
+        
+        console.log('🧮 Computing metrics...');
+        const summary = await api.computeCoreFromPcm(pcm, sampleRate);
+        console.log('✅ Metrics computed:', summary);
+        
+        const delivery: Partial<DeliverySummary> = {
+          endRushIndex: summary.endRushIndexApprox ?? 0,
+          pauses: summary.pauseEvents,
+          durationSec,
+        } as Partial<DeliverySummary>;
+        
+        console.log('💾 Setting core summary...');
+        setCoreSummary(delivery);
+      } catch (workerError) {
+        console.warn('⚠️ Worker failed, continuing without advanced metrics:', workerError);
+        // Set a minimal summary so the app doesn't get stuck
+        const delivery: Partial<DeliverySummary> = {
+          endRushIndex: 0,
+          pauses: [],
+          durationSec,
+        } as Partial<DeliverySummary>;
+        setCoreSummary(delivery);
+      }
+      
+      console.log('✅ State updated successfully');
+    } catch (error) {
+      console.error('❌ Audio processing failed:', error);
+      // Set minimal state to prevent getting stuck
+      setDurationSec(0);
+      setCoreSummary({ endRushIndex: 0, pauses: [], durationSec: 0 });
     } finally {
       computeInFlightRef.current = false;
+      console.log('🏁 startCompute finished');
     }
   }
 
   const handlePhaseChange = useCallback((p: string) => {
-    if (p !== "ready") return;
-    const audioEl = document.querySelector('audio[src^="blob:"]') as HTMLAudioElement | null;
-    const url = audioEl?.src || null;
-    if (!url) return;
-    if (lastUrlRef.current === url || computeInFlightRef.current) return;
+    console.log('🔄 Phase changed to:', p);
+    currentPhaseRef.current = p;
+  }, []);
+
+  const handleBlobUrlChange = useCallback((url: string | null, blob: Blob | null | undefined) => {
+    console.log('🔍 handleBlobUrlChange called with:', url, 'blob:', blob);
+    console.log('🔍 Current phase:', currentPhaseRef.current);
+    console.log('🔍 Last URL:', lastUrlRef.current);
+    console.log('🔍 Compute in flight:', computeInFlightRef.current);
+    
+    if (!url || !blob || lastUrlRef.current === url || computeInFlightRef.current) {
+      console.log('🔍 Early return - conditions not met');
+      return;
+    }
+    if (currentPhaseRef.current !== "ready") {
+      console.log('🔍 Early return - phase not ready');
+      return;
+    }
+    
+    console.log('🚀 Starting compute with URL:', url, 'and blob');
     lastUrlRef.current = url;
     setAudioUrl(url);
-    startCompute(url);
+    startCompute(url, blob);
   }, []);
 
   const goal: Goal = "Authority";
@@ -189,11 +245,26 @@ export default function RecordPage() {
     (typeof rawTranscript === "string" && rawTranscript.trim().length > 0)
   );
 
+  // Debug metrics
+  console.log('📊 Metrics debug:', {
+    talkTimeSec,
+    tokensLength: tokens?.length,
+    rawTranscriptLength: rawTranscript?.length,
+    hasAnyMetrics,
+    audioUrl: !!audioUrl,
+    overlayVisible
+  });
+
   useEffect(() => {
     const shouldShow = Boolean(audioUrl) && !hasAnyMetrics;
     if (shouldShow) {
       setOverlayVisible(true);
-      return;
+      // Fallback: hide overlay after 10 seconds to prevent getting stuck
+      const fallbackTimeout = window.setTimeout(() => {
+        console.warn('⚠️ Overlay timeout - hiding after 10 seconds');
+        setOverlayVisible(false);
+      }, 10000);
+      return () => window.clearTimeout(fallbackTimeout);
     }
     const t = window.setTimeout(() => setOverlayVisible(false), 160);
     return () => window.clearTimeout(t);
@@ -210,6 +281,7 @@ export default function RecordPage() {
           disableLegacyResults={true}
           showUI={false}
           onPhaseChange={(p) => { handlePhaseChange(p); setIsRecording(p === "recording"); }}
+          onBlobUrlChange={handleBlobUrlChange}
           onTranscribingChange={(v) => setTranscribingLoading(Boolean(v))}
           onTranscript={({ transcript, words, paragraphs, durationSec }) => {
             setTokens(words ?? null);

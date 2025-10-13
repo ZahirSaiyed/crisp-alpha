@@ -22,10 +22,9 @@ export default function ResultsPage() {
   }, [session, router]);
 
   useEffect(() => {
-    if (!process.env.NEXT_PUBLIC_FF_PAGE_SPLIT) {
-      setCoachStatus("error");
-      return; // feature flag
-    }
+    // Feature flag check - coach functionality disabled for now
+    setCoachStatus("error");
+    return;
     let canceled = false;
     let attempts = 0;
     setPolling(true);
@@ -75,7 +74,8 @@ export default function ResultsPage() {
           <h1 className="text-xl font-bold">Results</h1>
           <p className="text-sm text-[color:rgba(11,11,12,0.65)]">Transcript and basic metrics.</p>
         </div>
-        {process.env.NEXT_PUBLIC_FF_PAGE_SPLIT && (
+        {/* Coach functionality disabled for now */}
+        {false && (
           <button type="button" onClick={() => router.push(`/coach/${id}`)} className="px-3 py-2 rounded-full border border-[color:var(--muted-2)] bg-white">
             Coach: {coachStatus === "ready" ? "Ready" : coachStatus === "error" ? "Error" : polling ? "Pending" : "Pending"}
           </button>

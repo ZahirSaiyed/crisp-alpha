@@ -1,95 +1,111 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server'
+import { createRequestId, withRequestId } from './lib/context'
+import { getClientIP, isRateLimited, getRateLimitInfo } from './lib/rateLimit'
+import { logRequest } from './lib/log'
+import { ENV, IS_PROD } from './lib/env'
 
-// Simple in-memory rate limiter (replace with Redis/Upstash for multi-instance)
-const rateLimitMap = new Map<string, number[]>();
-const MAX_REQUESTS = 20;
-const WINDOW_MS = 10 * 60 * 1000; // 10 minutes
-
-function getClientIP(request: NextRequest): string {
-  const forwarded = request.headers.get('x-forwarded-for');
-  const realIP = request.headers.get('x-real-ip');
-  const cfConnectingIP = request.headers.get('cf-connecting-ip');
-  
-  if (cfConnectingIP) return cfConnectingIP;
-  if (realIP) return realIP;
-  if (forwarded) return forwarded.split(',')[0].trim();
-  
-  return 'unknown';
-}
-
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const requests = rateLimitMap.get(ip) || [];
-  
-  // Remove old requests outside the window
-  const validRequests = requests.filter(timestamp => now - timestamp < WINDOW_MS);
-  
-  if (validRequests.length >= MAX_REQUESTS) {
-    return true;
-  }
-  
-  // Add current request
-  validRequests.push(now);
-  rateLimitMap.set(ip, validRequests);
-  
-  return false;
+// CSP configuration
+const CSP_CONFIG = {
+  development: [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // Next.js HMR requires unsafe-eval
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' blob: data:",
+    "media-src 'self' blob:",
+    "connect-src 'self'",
+    "font-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "frame-ancestors 'none'",
+    "form-action 'self'",
+    "upgrade-insecure-requests"
+  ],
+  production: [
+    "default-src 'self'",
+    "script-src 'self'", // No unsafe-* in production
+    "style-src 'self' 'unsafe-inline'", // Still needed for Tailwind
+    "img-src 'self' blob: data:",
+    "media-src 'self' blob:",
+    "connect-src 'self'",
+    "font-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "frame-ancestors 'none'",
+    "form-action 'self'",
+    "upgrade-insecure-requests"
+  ]
 }
 
 export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const startTime = Date.now()
+  const requestId = createRequestId()
+  const { pathname } = request.nextUrl
+  const method = request.method
   
-  // Apply rate limiting only to API routes
-  if (pathname.startsWith('/api/')) {
-    const ip = getClientIP(request);
-    
-    if (isRateLimited(ip)) {
-      return new NextResponse('Too Many Requests', {
-        status: 429,
-        headers: {
-          'Retry-After': '600', // 10 minutes
-        },
-      });
+  return withRequestId(requestId, () => {
+    // Origin validation for API routes
+    if (pathname.startsWith('/api/')) {
+      const origin = request.headers.get('origin')
+      if (origin && origin !== ENV.NEXT_PUBLIC_BASE_URL) {
+        const response = new NextResponse('Forbidden', { status: 403 })
+        response.headers.set('X-Request-ID', requestId)
+        
+        logRequest(method, pathname, 403, Date.now() - startTime, requestId, {
+          reason: 'origin_mismatch',
+          origin,
+          expected: ENV.NEXT_PUBLIC_BASE_URL
+        })
+        
+        return response
+      }
+      
+      // Rate limiting
+      const ip = getClientIP(request)
+      if (isRateLimited(ip)) {
+        const rateLimitInfo = getRateLimitInfo(ip)
+        const response = new NextResponse('Too Many Requests', {
+          status: 429,
+          headers: {
+            'Retry-After': '600', // 10 minutes
+            'X-RateLimit-Limit': '20',
+            'X-RateLimit-Remaining': rateLimitInfo.remaining.toString(),
+            'X-RateLimit-Reset': new Date(rateLimitInfo.resetTime).toISOString(),
+          },
+        })
+        response.headers.set('X-Request-ID', requestId)
+        
+        logRequest(method, pathname, 429, Date.now() - startTime, requestId, {
+          reason: 'rate_limited',
+          ip,
+          remaining: rateLimitInfo.remaining
+        })
+        
+        return response
+      }
     }
-  }
-  
-  // Security headers for all responses
-  const response = NextResponse.next();
-  
-  // HSTS
-  response.headers.set(
-    'Strict-Transport-Security',
-    'max-age=63072000; includeSubDomains; preload'
-  );
-  
-  // Content type sniffing protection
-  response.headers.set('X-Content-Type-Options', 'nosniff');
-  
-  // Referrer policy
-  response.headers.set('Referrer-Policy', 'no-referrer');
-  
-  // Frame options
-  response.headers.set('X-Frame-Options', 'DENY');
-  
-  // Content Security Policy
-  response.headers.set(
-    'Content-Security-Policy',
-    [
-      "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // Next.js requires unsafe-eval for HMR
-      "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' blob: data:",
-      "media-src 'self' blob:",
-      "connect-src 'self'", // No external connects from client
-      "font-src 'self'",
-      "object-src 'none'",
-      "base-uri 'self'",
-      "frame-ancestors 'none'",
-      "form-action 'self'",
-      "upgrade-insecure-requests"
-    ].join('; ')
-  );
-  
-  return response;
+    
+    // Create response with security headers
+    const response = NextResponse.next()
+    
+    // Request ID header
+    response.headers.set('X-Request-ID', requestId)
+    
+    // Security headers
+    response.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload')
+    response.headers.set('X-Content-Type-Options', 'nosniff')
+    response.headers.set('Referrer-Policy', 'no-referrer')
+    response.headers.set('X-Frame-Options', 'DENY')
+    
+    // Environment-aware CSP
+    const cspDirectives = IS_PROD ? CSP_CONFIG.production : CSP_CONFIG.development
+    response.headers.set('Content-Security-Policy', cspDirectives.join('; '))
+    
+    // Log the request
+    const duration = Date.now() - startTime
+    logRequest(method, pathname, 200, duration, requestId)
+    
+    return response
+  })
 }
 
 export const config = {

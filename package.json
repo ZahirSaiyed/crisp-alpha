@@ -4,18 +4,25 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build --turbopack",
+    "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --max-warnings=0",
+    "format": "prettier --write .",
+    "check:format": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ci": "vitest run --coverage",
+    "precommit": "pnpm typecheck && pnpm check:format && pnpm lint"
   },
   "dependencies": {
     "@deepgram/sdk": "^4.11.2",
+    "@google/genai": "^0.3.0",
     "comlink": "^4.4.2",
     "framer-motion": "^12.23.16",
-    "next": "15.5.3",
+    "next": "^15.5.3",
     "react": "19.1.0",
-    "react-dom": "19.1.0",
-    "@google/genai": "^0.3.0"
+    "react-dom": "19.1.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

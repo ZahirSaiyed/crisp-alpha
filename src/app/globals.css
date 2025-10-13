@@ -22,7 +22,7 @@
   --radius-full: 9999px;
   --space-hero-y: clamp(56px, 16vh, 144px);
   /* Fonts (wired via Next Font variables) */
-  --font-display: var(--font-red-rose);
+  --font-display: var(--font-inter);
   --font-body: var(--font-inter);
 
   /* New light playful palette */
@@ -175,7 +175,7 @@ body {
   --radius-full: 9999px;
   --space-hero-y: clamp(56px, 16vh, 144px);
   /* Fonts (wired via Next Font variables) */
-  --font-display: var(--font-red-rose);
+  --font-display: var(--font-inter);
   --font-body: var(--font-inter);
 
   /* New light playful palette */

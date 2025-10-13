@@ -161,24 +161,28 @@ export default function FeedbackTile({
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ ...payload, maxWords: 500 }),
         });
+        const raw = await res.json().catch(() => ({} as unknown));
         if (!res.ok) {
-          const j = await res.json().catch(() => ({}));
-          throw new Error(j?.error || `Request failed: ${res.status}`);
+          const j = (raw && typeof raw === "object") ? (raw as Record<string, unknown>) : {};
+          throw new Error((j.message as string) || (j.error as string) || `Request failed: ${res.status}`);
         }
-        const data = await res.json();
+        const data = (raw && typeof raw === "object" && "data" in (raw as Record<string, unknown>))
+          ? (raw as { data: unknown }).data as Record<string, unknown>
+          : (raw as Record<string, unknown>);
         if (aborted) return;
-        if (data && typeof data === "object" && (Array.isArray(data.strengths) || data.coachInsight || data.improvedAnswer)) {
+        if (data && typeof data === "object" && (Array.isArray((data as Record<string, unknown>).strengths) || (data as Record<string, unknown>).coachInsight || (data as Record<string, unknown>).improvedAnswer)) {
           const s: Structured = {
-            strengths: Array.isArray(data.strengths) ? data.strengths : [],
-            weaknesses: Array.isArray(data.weaknesses) ? data.weaknesses : [],
-            recommendations: Array.isArray(data.recommendations) ? data.recommendations : [],
-            coachInsight: data.coachInsight || undefined,
-            improvedAnswer: typeof data.improvedAnswer === "string" ? data.improvedAnswer : undefined,
+            strengths: Array.isArray((data as Record<string, unknown>).strengths) ? (data as Record<string, unknown>).strengths as string[] : [],
+            weaknesses: Array.isArray((data as Record<string, unknown>).weaknesses) ? (data as Record<string, unknown>).weaknesses as string[] : [],
+            recommendations: Array.isArray((data as Record<string, unknown>).recommendations) ? (data as Record<string, unknown>).recommendations as string[] : [],
+            coachInsight: (data as Record<string, unknown>).coachInsight as Structured["coachInsight"] | undefined,
+            improvedAnswer: typeof (data as Record<string, unknown>).improvedAnswer === "string" ? (data as Record<string, unknown>).improvedAnswer as string : undefined,
           };
           setJson(s);
           onStructuredRef.current?.(s);
         } else {
-          setText(typeof data?.feedback === "string" ? data.feedback : "");
+          const fb = (data && typeof data === "object") ? (data as Record<string, unknown>).feedback : undefined;
+          setText(typeof fb === "string" ? fb : "");
         }
       } catch (e) {
         const msg = getErrorMessage(e);

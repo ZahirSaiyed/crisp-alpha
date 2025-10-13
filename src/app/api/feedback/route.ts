@@ -1,7 +1,38 @@
-import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenAI } from "@google/genai";
+import { NextRequest } from 'next/server'
+import { z } from 'zod'
+import { GoogleGenAI } from '@google/genai'
+import { ENV } from '../../../lib/env'
+import { 
+  badRequest, 
+  serverError, 
+  ok,
+  validateRequest 
+} from '../../../lib/http'
+import { logApiCall, logError } from '../../../lib/log'
+import { getRequestId } from '../../../lib/context'
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs'
+
+// Zod schemas for validation
+const FeedbackRequestSchema = z.object({
+  transcript: z.string().optional(),
+  tokens: z.array(z.object({
+    word: z.string().optional(),
+  })).optional(),
+  maxWords: z.number().min(10).max(1000).optional(),
+})
+
+const FeedbackResponseSchema = z.object({
+  strengths: z.array(z.string()).optional(),
+  weaknesses: z.array(z.string()).optional(),
+  recommendations: z.array(z.string()).optional(),
+  coachInsight: z.object({
+    headline: z.string(),
+    subtext: z.string(),
+  }).optional(),
+  improvedAnswer: z.string().optional(),
+  feedback: z.string().optional(), // Fallback for non-JSON responses
+})
 
 function buildPrompt(answer: string) {
   const base = `You are a constructive expert feedback coach.
@@ -90,47 +121,106 @@ function tryParseJson(raw: string): unknown | null {
 }
 
 export async function POST(req: NextRequest) {
+  const requestId = getRequestId() || 'unknown'
+  const startTime = Date.now()
+  
   try {
-    const contentType = req.headers.get("content-type") || "";
-    if (!contentType.includes("application/json")) {
-      return NextResponse.json({ error: "Expected application/json" }, { status: 400 });
+    // Validate content type
+    const contentType = req.headers.get('content-type') || ''
+    if (!contentType.includes('application/json')) {
+      logError('Invalid content type', { contentType, requestId })
+      return badRequest('Expected application/json', 'INVALID_CONTENT_TYPE', requestId)
     }
-    const body = await req.json();
-    const transcript = (body?.transcript || "").toString();
-    const tokens = Array.isArray(body?.tokens) ? (body.tokens as Array<{ word?: string }>) : undefined;
-    const maxWords = typeof body?.maxWords === "number" ? Math.max(10, Math.min(1000, body.maxWords)) : 1200;
 
-    let answer = transcript && transcript.trim().length > 0 ? transcript : tokensToPlainText(tokens);
+    // Parse and validate request body
+    const body = await req.json()
+    const validation = validateRequest(FeedbackRequestSchema, body)
+    if (!validation.success) {
+      return validation.error
+    }
+
+    const { transcript, tokens, maxWords = 1200 } = validation.data
+
+    let answer = transcript && transcript.trim().length > 0 ? transcript : tokensToPlainText(tokens)
     if (!answer || answer.trim().length === 0) {
-      return NextResponse.json({ error: "No transcript or tokens provided" }, { status: 400 });
+      logError('No transcript or tokens provided', { requestId })
+      return badRequest('No transcript or tokens provided', 'NO_CONTENT', requestId)
     }
 
-    const words = answer.split(/\s+/).filter(Boolean);
+    // Truncate if too long
+    const words = answer.split(/\s+/).filter(Boolean)
     if (words.length > maxWords) {
-      answer = words.slice(0, maxWords).join(" ") + " …";
+      answer = words.slice(0, maxWords).join(' ') + ' …'
     }
 
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: "Missing GEMINI_API_KEY" }, { status: 500 });
-    }
-    const ai = new GoogleGenAI({ apiKey });
-    const result = await ai.models.generateContent({
-      model: "gemini-2.0-flash-exp",
-      contents: buildPrompt(answer),
-    });
-    const rawText = result.text || "";
-    const parsed = typeof rawText === "string" ? tryParseJson(rawText.trim()) : null;
+    // Create Gemini client with timeout
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 25000) // 25s timeout
 
-    if (parsed && typeof parsed === "object") {
-      const structuredData = parsed as Record<string, unknown>;
-      return NextResponse.json({ ...structuredData, _rawText: rawText }, { status: 200 });
-    }
+    try {
+      const ai = new GoogleGenAI({ apiKey: ENV.GEMINI_API_KEY })
+      const result = await ai.models.generateContent({
+        model: 'gemini-2.0-flash-exp',
+        contents: buildPrompt(answer),
+      })
+      
+      clearTimeout(timeoutId)
+      
+      const rawText = result.text || ''
+      const parsed = typeof rawText === 'string' ? tryParseJson(rawText.trim()) : null
 
-    const safe = (typeof rawText === "string" ? rawText : "").trim();
-    return NextResponse.json({ feedback: safe }, { status: 200 });
-  } catch (err) {
-    console.error("Gemini feedback error", err);
-    return NextResponse.json({ error: "Feedback generation failed" }, { status: 500 });
+      const duration = Date.now() - startTime
+      logApiCall('Gemini', 'gemini-2.0-flash-exp', 200, duration, requestId)
+
+      if (parsed && typeof parsed === 'object') {
+        const structuredData = parsed as Record<string, unknown>
+        const response = { ...structuredData }
+        
+        const responseValidation = FeedbackResponseSchema.safeParse(response)
+        if (!responseValidation.success) {
+          logError('Response validation failed', { errors: responseValidation.error.issues, requestId })
+          return serverError('Invalid response format', 'RESPONSE_VALIDATION_ERROR', requestId)
+        }
+        
+        return ok(response, requestId)
+      }
+
+      // Fallback for non-JSON responses
+      const safe = (typeof rawText === 'string' ? rawText : '').trim()
+      const fallbackResponse = { feedback: safe }
+      
+      const fallbackValidation = FeedbackResponseSchema.safeParse(fallbackResponse)
+      if (!fallbackValidation.success) {
+        logError('Fallback response validation failed', { errors: fallbackValidation.error.issues, requestId })
+        return serverError('Invalid response format', 'RESPONSE_VALIDATION_ERROR', requestId)
+      }
+      
+      return ok(fallbackResponse, requestId)
+      
+    } catch (error) {
+      clearTimeout(timeoutId)
+      const duration = Date.now() - startTime
+      
+      if (error instanceof Error && error.name === 'AbortError') {
+        logApiCall('Gemini', 'timeout', 408, duration, requestId, { error: 'Request timeout' })
+        return serverError('Request timeout', 'GEMINI_TIMEOUT', requestId)
+      }
+      
+      logError('Gemini API error', { 
+        error: error instanceof Error ? error.message : 'Unknown error', 
+        duration, 
+        requestId 
+      })
+      return serverError('Feedback generation failed', 'GEMINI_ERROR', requestId)
+    }
+    
+  } catch (error) {
+    const duration = Date.now() - startTime
+    logError('Feedback endpoint error', { 
+      error: error instanceof Error ? error.message : 'Unknown error', 
+      duration, 
+      requestId 
+    })
+    return serverError('Feedback generation failed', 'INTERNAL_ERROR', requestId)
   }
 } 

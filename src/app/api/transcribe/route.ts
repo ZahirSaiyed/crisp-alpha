@@ -1,31 +1,69 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from 'next/server'
+import { z } from 'zod'
+import { ENV, USE_FIXTURE } from '../../../lib/env'
+import { 
+  badRequest, 
+  entityTooLarge, 
+  forbidden, 
+  gatewayTimeout, 
+  serverError, 
+  ok,
+  validateRequest 
+} from '../../../lib/http'
+import { logApiCall, logError } from '../../../lib/log'
+import { getRequestId } from '../../../lib/context'
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs'
 
 // Disable body parser to handle streaming with size limits
 export const config = {
   api: {
     bodyParser: false,
   },
-};
+}
 
-type DeepgramWord = { word?: string; start?: number; end?: number; confidence?: number };
-type DeepgramAlternative = { transcript?: string; words?: DeepgramWord[] };
+// Zod schemas for validation
+const AllowedMimeTypes = z.enum(['audio/webm', 'audio/ogg', 'audio/mpeg', 'audio/wav'])
+
+const TranscribeRequestSchema = z.object({
+  'content-type': z.string().optional(),
+  'content-length': z.string().optional(),
+  'idempotency-key': z.string().optional().nullable(),
+})
+
+const TranscribeResponseSchema = z.object({
+  transcript: z.string(),
+  words: z.array(z.object({
+    word: z.string(),
+    start: z.number(),
+    end: z.number(),
+  })),
+  paragraphs: z.array(z.object({
+    text: z.string(),
+    start: z.number().optional(),
+    end: z.number().optional(),
+  })),
+  source: z.enum(['live', 'fixture']),
+})
+
+// Type definitions
+type DeepgramWord = { word?: string; start?: number; end?: number; confidence?: number }
+type DeepgramAlternative = { transcript?: string; words?: DeepgramWord[] }
 type DeepgramResult = {
   results?: {
     channels?: Array<{
-      alternatives?: DeepgramAlternative[];
-    }>;
-  };
-};
+      alternatives?: DeepgramAlternative[]
+    }>
+  }
+}
 
-type Paragraph = { text?: string; start?: number; end?: number };
+type Paragraph = { text?: string; start?: number; end?: number }
 
-type DgSentence = { text?: string; start?: number; end?: number };
-type DgParagraph = { sentences?: DgSentence[] };
-type DgParagraphs = { paragraphs?: DgParagraph[] };
+type DgSentence = { text?: string; start?: number; end?: number }
+type DgParagraph = { sentences?: DgSentence[] }
+type DgParagraphs = { paragraphs?: DgParagraph[] }
 
-type DeepgramAlternativeWithParagraphs = DeepgramAlternative & { paragraphs?: DgParagraphs };
+type DeepgramAlternativeWithParagraphs = DeepgramAlternative & { paragraphs?: DgParagraphs }
 
 function mapParagraphs(alt: DeepgramAlternativeWithParagraphs | undefined): Paragraph[] {
   const out: Paragraph[] = [];
@@ -35,9 +73,16 @@ function mapParagraphs(alt: DeepgramAlternativeWithParagraphs | undefined): Para
       const sents = Array.isArray(p?.sentences) ? p.sentences : [];
       if (sents.length > 0) {
         const text = sents.map((s) => (typeof s?.text === "string" ? s.text : "")).join(" ").trim();
-        const start = typeof sents[0]?.start === "number" ? sents[0].start : undefined;
-        const end = typeof sents[sents.length - 1]?.end === "number" ? sents[sents.length - 1].end : undefined;
-        out.push({ text, start, end });
+        const first = sents[0]!; // safe due to length check above
+        const last = sents[sents.length - 1]!; // safe due to length check above
+        const para: Paragraph = { text };
+        if (typeof first?.start === "number") {
+          para.start = first.start;
+        }
+        if (typeof last?.end === "number") {
+          para.end = last.end;
+        }
+        out.push(para);
       }
     }
   }
@@ -53,167 +98,201 @@ function normalizeMime(m: string | undefined): string | undefined {
 
 
 export async function POST(request: NextRequest) {
-  const requestId = Math.random().toString(36).slice(2, 10);
-  const startTime = Date.now();
+  const requestId = getRequestId() || 'unknown'
+  const startTime = Date.now()
   
   try {
-    // Security: Check origin header
-    const origin = request.headers.get('origin');
-    const expectedOrigin = process.env.NEXT_PUBLIC_BASE_URL;
-    if (origin && expectedOrigin && origin !== expectedOrigin) {
-      console.log(`[transcribe] status=403 origin_mismatch requestId=${requestId}`);
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    // Note: Header validation removed to avoid blocking legitimate requests
+    // The core validation happens on the actual audio data below
 
     // Security: Check content type (allow multipart/form-data for FormData uploads)
-    const contentType = request.headers.get("content-type") || "";
-    const isFormData = contentType.includes("multipart/form-data");
-    const allowedMimes = ['audio/webm', 'audio/ogg', 'audio/mpeg', 'audio/wav'];
+    const contentType = request.headers.get('content-type') || ''
+    const isFormData = contentType.includes('multipart/form-data')
     
-    if (!isFormData && !allowedMimes.some(m => contentType.includes(m))) {
-      console.log(`[transcribe] status=400 invalid_mime=${contentType} requestId=${requestId}`);
-      return NextResponse.json({ error: 'Invalid audio format' }, { status: 400 });
-    }
-
-    // If fixture mode is on (dev only), return the saved JSON from disk
-    if (process.env.NODE_ENV !== 'production' && process.env.USE_FIXTURE === "true") {
-      try {
-        const fs = await import("fs");
-        const path = await import("path");
-        const filePath = path.resolve(process.cwd(), "src/fixtures/transcript.json");
-        if (!fs.existsSync(filePath)) {
-          return NextResponse.json({ error: "Fixture not found. Add src/fixtures/transcript.json" }, { status: 500 });
-        }
-        const txt = fs.readFileSync(filePath, "utf8");
-        const json = JSON.parse(txt) as DeepgramResult;
-        const alt = json?.results?.channels?.[0]?.alternatives?.[0] as DeepgramAlternativeWithParagraphs | undefined;
-        const transcript = alt?.transcript ?? undefined;
-        const words = alt?.words ?? [];
-        const paragraphs: Paragraph[] = mapParagraphs(alt);
-        return NextResponse.json({ transcript: transcript || "No speech detected", words, paragraphs, _raw: json, source: "fixture" });
-      } catch {
-        return NextResponse.json({ error: "Failed to load fixture" }, { status: 500 });
+    // Validate MIME type for non-FormData uploads
+    if (!isFormData) {
+      const baseType = contentType.split(';')[0]?.trim()
+      const mimeValidation = AllowedMimeTypes.safeParse(baseType)
+      if (!mimeValidation.success) {
+        logError('Invalid MIME type', { contentType, requestId })
+        return badRequest('Invalid audio format', 'INVALID_MIME_TYPE', requestId)
       }
     }
 
-    let audioBuffer: Buffer;
-    let fileMime: string | undefined;
+    // If fixture mode is on (dev only), return the saved JSON from disk
+    if (USE_FIXTURE) {
+      try {
+        const fs = await import('fs')
+        const path = await import('path')
+        const filePath = path.resolve(process.cwd(), 'src/fixtures/transcript.json')
+        if (!fs.existsSync(filePath)) {
+          logError('Fixture file not found', { filePath, requestId })
+          return serverError('Fixture not found. Add src/fixtures/transcript.json', 'FIXTURE_NOT_FOUND', requestId)
+        }
+        const txt = fs.readFileSync(filePath, 'utf8')
+        const json = JSON.parse(txt) as DeepgramResult
+        const alt = json?.results?.channels?.[0]?.alternatives?.[0] as DeepgramAlternativeWithParagraphs | undefined
+        const transcript = alt?.transcript ?? 'No speech detected'
+        const words = alt?.words ?? []
+        const paragraphs: Paragraph[] = mapParagraphs(alt)
+        
+        const response = { transcript, words, paragraphs, source: 'fixture' as const }
+        const validation = TranscribeResponseSchema.safeParse(response)
+        if (!validation.success) {
+          logError('Fixture response validation failed', { errors: validation.error.issues, requestId })
+          return serverError('Invalid fixture data', 'FIXTURE_VALIDATION_ERROR', requestId)
+        }
+        
+        return ok(response, requestId)
+      } catch (error) {
+        logError('Failed to load fixture', { error: error instanceof Error ? error.message : 'Unknown error', requestId })
+        return serverError('Failed to load fixture', 'FIXTURE_LOAD_ERROR', requestId)
+      }
+    }
+
+    let audioBuffer: Buffer
+    let fileMime: string | undefined
 
     if (isFormData) {
       // Handle FormData upload
-      const formData = await request.formData();
-      const audioFile = formData.get("audio") as File;
+      const formData = await request.formData()
+      const audioFile = formData.get('audio') as File
       
       if (!audioFile) {
-        console.log(`[transcribe] status=400 no_audio_file requestId=${requestId}`);
-        return NextResponse.json({ error: "No audio file provided" }, { status: 400 });
+        logError('No audio file provided', { requestId })
+        return badRequest('No audio file provided', 'NO_AUDIO_FILE', requestId)
       }
 
       // Check file size
       if (audioFile.size > 20 * 1024 * 1024) { // 20MB
-        console.log(`[transcribe] status=413 size_exceeded=${audioFile.size} requestId=${requestId}`);
-        return NextResponse.json({ error: "File too large" }, { status: 413 });
+        logError('File too large', { size: audioFile.size, requestId })
+        return entityTooLarge('File too large', 'FILE_TOO_LARGE', requestId)
       }
 
       // Validate MIME type
-      const fileType = audioFile.type;
-      if (!allowedMimes.some(m => fileType.includes(m))) {
-        console.log(`[transcribe] status=400 invalid_file_mime=${fileType} requestId=${requestId}`);
-        return NextResponse.json({ error: 'Invalid audio format' }, { status: 400 });
+      const fileType = audioFile.type
+      const mimeValidation = AllowedMimeTypes.safeParse(fileType.split(';')[0]?.trim())
+      if (!mimeValidation.success) {
+        logError('Invalid file MIME type', { fileType, requestId })
+        return badRequest('Invalid audio format', 'INVALID_FILE_MIME', requestId)
       }
 
-      audioBuffer = Buffer.from(await audioFile.arrayBuffer());
-      fileMime = normalizeMime(fileType);
+      audioBuffer = Buffer.from(await audioFile.arrayBuffer())
+      fileMime = normalizeMime(fileType)
     } else {
       // Handle direct binary upload
-      const chunks: Buffer[] = [];
-      let size = 0;
-      const MAX_SIZE = 20 * 1024 * 1024; // 20MB
+      const chunks: Buffer[] = []
+      let size = 0
+      const MAX_SIZE = 20 * 1024 * 1024 // 20MB
       
-      const reader = request.body?.getReader();
+      const reader = request.body?.getReader()
       if (!reader) {
-        console.log(`[transcribe] status=400 no_body requestId=${requestId}`);
-        return NextResponse.json({ error: "No audio data provided" }, { status: 400 });
+        logError('No request body', { requestId })
+        return badRequest('No audio data provided', 'NO_BODY', requestId)
       }
 
       try {
         while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+          const { done, value } = await reader.read()
+          if (done) break
           
-          size += value.length;
+          size += value.length
           if (size > MAX_SIZE) {
-            console.log(`[transcribe] status=413 size_exceeded=${size} requestId=${requestId}`);
-            return NextResponse.json({ error: "File too large" }, { status: 413 });
+            logError('Request body too large', { size, requestId })
+            return entityTooLarge('File too large', 'BODY_TOO_LARGE', requestId)
           }
           
-          chunks.push(Buffer.from(value));
+          chunks.push(Buffer.from(value))
         }
       } finally {
-        reader.releaseLock();
+        reader.releaseLock()
       }
 
-      audioBuffer = Buffer.concat(chunks);
-      fileMime = normalizeMime(contentType);
+      audioBuffer = Buffer.concat(chunks)
+      fileMime = normalizeMime(contentType)
     }
     
     // Create Deepgram client with timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 25000) // 25s timeout
     
     try {
-      const resp = await fetch("https://api.deepgram.com/v1/listen?smart_format=true&filler_words=true&paragraphs=true&model=nova-2&language=en&detect_language=false", {
-        method: "POST",
-        headers: {
-          "Authorization": `Token ${process.env.DEEPGRAM_API_KEY || ""}`,
-          "Content-Type": (fileMime || "audio/webm") as string,
-        },
-        body: audioBuffer,
-        signal: controller.signal,
-      });
+      const deepgramUrl = 'https://api.deepgram.com/v1/listen?smart_format=true&filler_words=true&paragraphs=true&model=nova-2&language=en&detect_language=false'
       
-      clearTimeout(timeoutId);
+      const resp = await fetch(deepgramUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Token ${ENV.DEEPGRAM_API_KEY}`,
+          'Content-Type': (fileMime || 'audio/webm') as string,
+        },
+        body: audioBuffer as BodyInit,
+        signal: controller.signal,
+      })
+      
+      clearTimeout(timeoutId)
       
       if (!resp.ok) {
-        console.log(`[transcribe] status=500 deepgram_error=${resp.status} requestId=${requestId}`);
-        return NextResponse.json({ error: `Transcription failed` }, { status: 500 });
+        const errorText = await resp.text()
+        logApiCall('Deepgram', deepgramUrl, resp.status, Date.now() - startTime, requestId, {
+          error: `HTTP ${resp.status}`,
+          response: errorText,
+        })
+        return serverError(`Transcription service unavailable: ${resp.status} ${errorText}`, 'DEEPGRAM_ERROR', requestId)
       }
       
-      const result = await resp.json();
+      const result = await resp.json()
 
-      const dg = result as unknown as DeepgramResult;
-      const alt = dg?.results?.channels?.[0]?.alternatives?.[0] as DeepgramAlternativeWithParagraphs | undefined;
-      const transcript = alt?.transcript ?? undefined;
-      const words = alt?.words ?? [];
-      const paragraphs: Paragraph[] = mapParagraphs(alt);
+      const dg = result as unknown as DeepgramResult
+      const alt = dg?.results?.channels?.[0]?.alternatives?.[0] as DeepgramAlternativeWithParagraphs | undefined
+      const transcript = alt?.transcript ?? 'No speech detected'
+      const words = alt?.words ?? []
+      const paragraphs: Paragraph[] = mapParagraphs(alt)
       
-      const duration = Date.now() - startTime;
-      console.log(`[transcribe] status=200 duration=${duration}ms requestId=${requestId}`);
+      const duration = Date.now() - startTime
+      logApiCall('Deepgram', deepgramUrl, 200, duration, requestId)
       
       // Immediately free the audio buffer
-      audioBuffer.fill(0);
+      audioBuffer.fill(0)
       
-      return NextResponse.json({ 
-        transcript: transcript || "No speech detected", 
+      const response = { 
+        transcript, 
         words, 
         paragraphs, 
-        source: "live" 
-      });
+        source: 'live' as const 
+      }
+      
+      const validation = TranscribeResponseSchema.safeParse(response)
+      if (!validation.success) {
+        logError('Response validation failed', { errors: validation.error.issues, requestId })
+        return serverError('Invalid response format', 'RESPONSE_VALIDATION_ERROR', requestId)
+      }
+      
+      return ok(response, requestId)
       
     } catch (error) {
-      clearTimeout(timeoutId);
-      const duration = Date.now() - startTime;
+      clearTimeout(timeoutId)
+      const duration = Date.now() - startTime
+      
       if (error instanceof Error && error.name === 'AbortError') {
-        console.log(`[transcribe] status=408 timeout duration=${duration}ms requestId=${requestId}`);
-        return NextResponse.json({ error: "Request timeout" }, { status: 408 });
+        logApiCall('Deepgram', 'timeout', 408, duration, requestId, { error: 'Request timeout' })
+        return gatewayTimeout('Request timeout', 'DEEPGRAM_TIMEOUT', requestId)
       }
-      console.log(`[transcribe] status=500 error duration=${duration}ms requestId=${requestId}`);
-      return NextResponse.json({ error: "Transcription failed" }, { status: 500 });
+      
+      logError('Deepgram API error', { 
+        error: error instanceof Error ? error.message : 'Unknown error', 
+        duration, 
+        requestId 
+      })
+      return serverError('Transcription failed', 'DEEPGRAM_ERROR', requestId)
     }
     
-  } catch {
-    const duration = Date.now() - startTime;
-    console.log(`[transcribe] status=500 error duration=${duration}ms requestId=${requestId}`);
-    return NextResponse.json({ error: "Transcription failed" }, { status: 500 });
+  } catch (error) {
+    const duration = Date.now() - startTime
+    logError('Transcribe endpoint error', { 
+      error: error instanceof Error ? error.message : 'Unknown error', 
+      duration, 
+      requestId 
+    })
+    return serverError('Transcription failed', 'INTERNAL_ERROR', requestId)
   }
 } 

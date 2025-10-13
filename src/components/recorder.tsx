@@ -29,10 +29,11 @@ export type RecorderHandle = {
   stop: () => void;
 };
 
-const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; appearance?: "onLight" | "onDark"; onPhaseChange?: (p: Phase) => void; disableLegacyResults?: boolean; onTranscript?: (p: { transcript: string | null; words: Array<{ word: string; start?: number; end?: number }> | null; paragraphs?: Array<{ text: string; start?: number; end?: number }> | null; durationSec?: number | null; }) => void; onTranscribingChange?: (loading: boolean) => void; showUI?: boolean }>(function Recorder({ stickyMobileCTA = true, appearance = "onLight", onPhaseChange, disableLegacyResults = false, onTranscript, onTranscribingChange, showUI = true }, ref) {
+const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; appearance?: "onLight" | "onDark"; onPhaseChange?: (p: Phase) => void; onBlobUrlChange?: (url: string | null, blob?: Blob | null) => void; disableLegacyResults?: boolean; onTranscript?: (p: { transcript: string | null; words: Array<{ word: string; start?: number; end?: number }> | null; paragraphs?: Array<{ text: string; start?: number; end?: number }> | null; durationSec?: number | null; }) => void; onTranscribingChange?: (loading: boolean) => void; showUI?: boolean }>(function Recorder({ stickyMobileCTA = true, appearance = "onLight", onPhaseChange, onBlobUrlChange, disableLegacyResults = false, onTranscript, onTranscribingChange, showUI = true }, ref) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState<string | null>(null);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [currentBlob, setCurrentBlob] = useState<Blob | null>(null);
   const [mimeType, setMimeType] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState<number>(0);
   const [transcript, setTranscript] = useState<string | null>(null);
@@ -65,6 +66,10 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
   useEffect(() => {
     onPhaseChange?.(phase);
   }, [phase, onPhaseChange]);
+
+  useEffect(() => {
+    onBlobUrlChange?.(blobUrl, currentBlob);
+  }, [blobUrl, currentBlob, onBlobUrlChange]);
 
   useEffect(() => {
     // Allow external trigger to begin/stop recording
@@ -150,20 +155,24 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
         method: "POST", 
         body: formData 
       });
-      const data = await apiResponse.json();
+      const raw = await apiResponse.json();
       if (!apiResponse.ok) {
-        throw new Error(data.error || "Transcription failed");
+        const msg = (raw && typeof raw === "object") ? ((raw.message as string) || (raw.error as string)) : undefined;
+        throw new Error(msg || "Transcription failed");
       }
+      const data = (raw && typeof raw === "object" && "data" in (raw as Record<string, unknown>))
+        ? (raw as { data: unknown }).data as Record<string, unknown>
+        : (raw as Record<string, unknown>);
 
       
       // Track source to handle duration in fixture mode
-      const isFixture = data?.source === "fixture";
+      const isFixture = (data as Record<string, unknown>)?.source === "fixture";
       setIsFixtureResponse(isFixture);
 
-      setTranscript(data.transcript);
-      if (Array.isArray(data.words)) {
+      setTranscript((data as Record<string, unknown>).transcript as string);
+      if (Array.isArray((data as Record<string, unknown>).words)) {
         setDgWords(
-          data.words.map((w: unknown) => {
+          (data as Record<string, unknown>).words.map((w: unknown) => {
             const obj = (w ?? {}) as Record<string, unknown>;
             const wordVal = typeof obj.word === "string" ? obj.word : String(obj.word ?? "");
             const startVal = typeof obj.start === "number" ? obj.start : undefined;
@@ -174,9 +183,9 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
         );
       }
 
-      if (Array.isArray(data.paragraphs)) {
+      if (Array.isArray((data as Record<string, unknown>).paragraphs)) {
         setDgParagraphs(
-          data.paragraphs.map((p: unknown) => {
+          (data as Record<string, unknown>).paragraphs.map((p: unknown) => {
             const obj = (p ?? {}) as Record<string, unknown>;
             const text = typeof obj.text === "string" ? obj.text : String(obj.text ?? "");
             const start = typeof obj.start === "number" ? obj.start : undefined;
@@ -187,9 +196,9 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
       }
 
       // In fixture mode, force duration from Deepgram timings to match the fixture
-      if (isFixture && Array.isArray(data.words)) {
+      if (isFixture && Array.isArray((data as Record<string, unknown>).words)) {
         let lastEnd = 0;
-        for (const w of data.words as Array<Record<string, unknown>>) {
+        for (const w of (data as Record<string, unknown>).words as Array<Record<string, unknown>>) {
           const end = typeof w.end === "number" ? w.end : undefined;
           if (typeof end === "number" && end > lastEnd) lastEnd = end;
         }
@@ -198,8 +207,8 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
 
       // Notify parent with transcript, words, and paragraphs
       try {
-        const wordsArr = Array.isArray(data.words)
-          ? (data.words.map((raw: unknown) => {
+        const wordsArr = Array.isArray((data as Record<string, unknown>).words)
+          ? ((data as Record<string, unknown>).words.map((raw: unknown) => {
               const wObj = (raw ?? {}) as Record<string, unknown>;
               const word = typeof wObj.word === "string" ? wObj.word : String(wObj.word ?? "");
               const start = typeof wObj.start === "number" ? wObj.start : undefined;
@@ -207,8 +216,8 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
               return { word, start, end };
             }) as Array<{ word: string; start?: number; end?: number }>)
           : null;
-        const parasArr = Array.isArray(data.paragraphs)
-          ? (data.paragraphs.map((raw: unknown) => {
+        const parasArr = Array.isArray((data as Record<string, unknown>).paragraphs)
+          ? ((data as Record<string, unknown>).paragraphs.map((raw: unknown) => {
               const pObj = (raw ?? {}) as Record<string, unknown>;
               const text = typeof pObj.text === "string" ? pObj.text : String(pObj.text ?? "");
               const start = typeof pObj.start === "number" ? pObj.start : undefined;
@@ -216,14 +225,14 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
               return { text, start, end };
             }) as Array<{ text: string; start?: number; end?: number }>)
           : null;
-        onTranscript?.({ transcript: (data.transcript as string) ?? null, words: wordsArr, paragraphs: parasArr, durationSec: audioDurationSec });
+        onTranscript?.({ transcript: ((data as Record<string, unknown>).transcript as string) ?? null, words: wordsArr, paragraphs: parasArr, durationSec: audioDurationSec });
       } catch {}
 
       // Run energy analysis after transcription so we can align hotspots to content words
       try {
         setIsAnalyzingEnergy(true);
         setEnergyError(null);
-        const metrics = await analyzeEnergyFromBlob(audioBlob, Array.isArray(data.words) ? data.words : null);
+        const metrics = await analyzeEnergyFromBlob(audioBlob, Array.isArray((data as Record<string, unknown>).words) ? (data as Record<string, unknown>).words as unknown[] : null);
         setEnergy(metrics);
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Energy analysis failed";
@@ -306,12 +315,12 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
     const MA_SEC = 1.0; // 1s moving average window
     const maWin = Math.max(1, Math.round(MA_SEC / hopSec));
     const prefix: number[] = [0];
-    for (let i = 0; i < rmsNorm.length; i++) prefix.push(prefix[prefix.length - 1] + rmsNorm[i]);
+    for (let i = 0; i < rmsNorm.length; i++) prefix.push((prefix[prefix.length - 1]!) + (rmsNorm[i] ?? 0));
     const movingAvg: number[] = [];
     for (let i = 0; i < rmsNorm.length; i++) {
       const start = Math.max(0, i - maWin + 1);
       const end = i + 1;
-      const sum = prefix[end] - prefix[start];
+      const sum = (prefix[end]!) - (prefix[start]!);
       movingAvg.push(sum / (end - start));
     }
     const over: boolean[] = rmsNorm.map((v, i) => v > 1.2 * (movingAvg[i] || 1e-9));
@@ -325,8 +334,8 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
         const runEndIdx = atEnd && over[i] ? i : i - 1;
         const len = runEndIdx - runStart + 1;
         if (len >= minFrames) {
-          const startT = frameTimes[runStart];
-          const endT = frameTimes[runEndIdx] + hopSec; // approximate end of last frame
+          const startT = frameTimes[runStart]!;
+          const endT = (frameTimes[runEndIdx]!) + hopSec; // approximate end of last frame
           hotspots.push({ start: startT, end: endT });
         }
         runStart = null;
@@ -384,7 +393,7 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
       const sortedF = [...f0Series].sort((a, b) => a - b);
       const p5i = Math.max(0, Math.floor(0.05 * (sortedF.length - 1)));
       const p95i = Math.min(sortedF.length - 1, Math.floor(0.95 * (sortedF.length - 1)));
-      pitchRangeHz = Math.round((sortedF[p95i] - sortedF[p5i]) * 10) / 10;
+      pitchRangeHz = Math.round(((sortedF[p95i]!) - (sortedF[p5i]!)) * 10) / 10;
       const meanF = f0Series.reduce((a, b) => a + b, 0) / f0Series.length;
       const varF = f0Series.reduce((a, b) => a + Math.pow(b - meanF, 2), 0) / f0Series.length;
       pitchVariance = Math.round(varF * 100) / 100;
@@ -402,17 +411,26 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
         const wordVal = typeof obj.word === "string" ? obj.word : String(obj.word ?? "");
         return { start: startVal, end: endVal, word: wordVal };
       }).filter((w) => typeof w.start === "number" && typeof w.end === "number") as Array<{ start: number; end: number; word: string }>;
-      words.sort((a, b) => a.start - b.start);
+      words.sort((a, b) => (a.start as number) - (b.start as number));
       const segments: Array<{ start: number; end: number }> = [];
-      let segStart = words[0].start;
-      for (let i = 1; i < words.length; i++) {
-        const gap = words[i].start - words[i - 1].end;
-        if (gap >= 0.4) {
-          segments.push({ start: segStart, end: words[i - 1].end });
-          segStart = words[i].start;
+      if (Array.isArray(words) && words.length > 0) {
+        const firstWord = words.at(0);
+        if (firstWord) {
+          let segStart = firstWord.start;
+          for (let i = 1; i < words.length; i++) {
+            const curr = words[i];
+            const prev = words[i - 1];
+            if (!curr || !prev) continue;
+            const gap = curr.start - prev.end;
+            if (gap >= 0.4) {
+              segments.push({ start: segStart, end: prev.end });
+              segStart = curr.start;
+            }
+          }
+          const last = words[words.length - 1];
+          if (last) segments.push({ start: segStart, end: last.end });
         }
       }
-      segments.push({ start: segStart, end: words[words.length - 1].end });
 
       const windowSec = 0.4;
       for (const seg of segments) {
@@ -421,14 +439,14 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
         // Collect f0 samples in [t0, t1]
         const idxs: number[] = [];
         for (let i = 0; i < f0Times.length; i++) {
-          const t = f0Times[i];
+          const t = f0Times[i] ?? -Infinity;
           if (t >= t0 && t <= t1) idxs.push(i);
         }
         if (idxs.length >= 2) {
-          const firstIdx = idxs[0];
-          const lastIdx = idxs[idxs.length - 1];
-          const df = f0Series[lastIdx] - f0Series[firstIdx];
-          const dt = f0Times[lastIdx] - f0Times[firstIdx];
+          const firstIdx = idxs[0]!;
+          const lastIdx = idxs[idxs.length - 1]!;
+          const df = (f0Series[lastIdx]!) - (f0Series[firstIdx]!);
+          const dt = (f0Times[lastIdx]!) - (f0Times[firstIdx]!);
           if (dt > 0) {
             const slope = Math.round((df / dt) * 100) / 100; // Hz/sec
             eosSlopes.push(slope);
@@ -529,7 +547,7 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
     let i = 0;
     let key = 0;
     while (i < tokens.length) {
-      const w = tokens[i];
+      const w = tokens[i]!;
       const word = (w.word || "");
       const low = word.toLowerCase().replace(/^\W+|\W+$/g, "");
       const mid = typeof w.start === "number" && typeof w.end === "number" ? (w.start + w.end) / 2 : undefined;
@@ -539,7 +557,7 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
       let isFiller = false;
       let consumeNext = false;
       if (low === "you" && tokens[i + 1]) {
-        const nxt = (tokens[i + 1].word || "").toLowerCase().replace(/^\W+|\W+$/g, "");
+        const nxt = ((tokens[i + 1]!.word) || "").toLowerCase().replace(/^\W+|\W+$/g, "");
         if (nxt === "know") {
           isFiller = true;
           consumeNext = true;
@@ -567,7 +585,7 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
 
       if (consumeNext) {
         // Render the second token of "you know" similarly (as filler, share emphasis by recomputing)
-        const w2 = tokens[i + 1];
+        const w2 = tokens[i + 1]!;
         const mid2 = typeof w2.start === "number" && typeof w2.end === "number" ? (w2.start + w2.end) / 2 : undefined;
         const emphasis2 = typeof mid2 === "number" ? isInHotspot(mid2) : false;
         let node2: React.ReactNode = w2.word;
@@ -715,9 +733,9 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
     const fillersSingle = new Set(["um", "uh", "like"]);
     let fillerCount = 0;
     if (dgWords && dgWords.length > 0) {
-      const tokens = dgWords.map((w) => (w.word || "").toLowerCase().replace(/^\W+|\W+$/g, ""));
+      const tokens = dgWords.map((w) => ((w.word ?? "") as string).toLowerCase().replace(/^\W+|\W+$/g, ""));
       for (let i = 0; i < tokens.length; i++) {
-        const t = tokens[i];
+        const t: string = tokens[i] ?? "";
         if (t === "you" && tokens[i + 1] === "know") {
           fillerCount += 1;
           i += 1; // consume next
@@ -726,7 +744,7 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
         if (fillersSingle.has(t)) fillerCount += 1;
       }
     } else if (transcript) {
-      const tx = transcript.toLowerCase();
+      const tx = (transcript ?? "").toLowerCase();
       const youKnowMatches = tx.match(/\byou\s+know\b/g) || [];
       const singlesMatches = tx.match(/\b(um|uh|like)\b/g) || [];
       fillerCount = youKnowMatches.length + singlesMatches.length;
@@ -760,12 +778,12 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
       const gaps: number[] = [];
       const gapSpans: Array<{ start: number; end: number; gap: number }> = [];
       for (let i = 1; i < wordsWithTimes.length; i++) {
-        const prev = wordsWithTimes[i - 1];
-        const curr = wordsWithTimes[i];
+        const prev = wordsWithTimes[i - 1]!;
+        const curr = wordsWithTimes[i]!;
         const gap = (curr.start as number) - (prev.end as number);
         if (gap > 0) {
           gaps.push(gap);
-          gapSpans.push({ start: prev.end as number, end: curr.start as number, gap });
+          gapSpans.push({ start: (prev.end as number), end: (curr.start as number), gap });
         }
       }
 
@@ -775,10 +793,10 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
         const sorted = [...gaps].sort((a, b) => a - b);
         const mid = Math.floor(sorted.length - 1) / 2;
         if (sorted.length % 2 === 1) {
-          medianGapSec = Math.round(sorted[Math.floor(mid)] * 100) / 100;
+          medianGapSec = Math.round((sorted[Math.floor(mid)]!) * 100) / 100;
         } else {
-          const m1 = sorted[sorted.length / 2 - 1];
-          const m2 = sorted[sorted.length / 2];
+          const m1 = sorted[sorted.length / 2 - 1]!;
+          const m2 = sorted[sorted.length / 2]!;
           medianGapSec = Math.round(((m1 + m2) / 2) * 100) / 100;
         }
 
@@ -912,6 +930,7 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
         if (blobUrl) URL.revokeObjectURL(blobUrl);
         const url = URL.createObjectURL(finalBlob);
         setBlobUrl(url);
+        setCurrentBlob(finalBlob);
         setPhase("ready");
         streamRef.current?.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
@@ -997,6 +1016,7 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
           if (blobUrl) URL.revokeObjectURL(blobUrl);
           const url = URL.createObjectURL(blob);
           setBlobUrl(url);
+          setCurrentBlob(blob);
           setPhase("ready");
           streamRef.current?.getTracks().forEach((trk) => trk.stop());
           streamRef.current = null;
@@ -1060,6 +1080,7 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
     if (blobUrl) URL.revokeObjectURL(blobUrl);
     const url = URL.createObjectURL(file);
     setBlobUrl(url);
+    setCurrentBlob(file);
     setMimeType(file.type || null);
     setPhase("ready");
     setTranscript(null);
@@ -1098,6 +1119,7 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
     setDgWords(null);
     setDgParagraphs(null);
     setBlobUrl(null);
+    setCurrentBlob(null);
     setAudioDurationSec(null);
     setEnergy(null);
     setTranscriptionError(null);
