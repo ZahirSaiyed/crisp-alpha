@@ -1180,11 +1180,6 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
           <style jsx>{`
             @keyframes pulse-ring { from { transform: scale(1); opacity: 0.45; } to { transform: scale(1.5); opacity: 0; } }
           `}</style>
-          {/* Mic icon */}
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true" className="pointer-events-none">
-            <path d="M12 14a3 3 0 0 0 3-3V7a3 3 0 1 0-6 0v4a3 3 0 0 0 3 3Z" fill="white"/>
-            <path d="M5 11a1 1 0 1 0-2 0 9 9 0 0 0 8 8v3H9a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2h-2v-3a9 9 0 0 0 8-8 1 1 0 1 0-2 0 7 7 0 1 1-14 0Z" fill="white"/>
-          </svg>
           <span className="absolute inset-0 rounded-full" style={{ boxShadow: "0 0 0 0 rgba(239,68,68,0.5)", animation: "pulse-ring 1.6s ease-out infinite" }} />
         </button>
       ) : (

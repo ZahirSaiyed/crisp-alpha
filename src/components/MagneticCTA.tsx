@@ -46,7 +46,7 @@ export default function MagneticCTA({ href, children, disabled = false, loading 
     onClick?.(e);
   }
 
-  const commonClass = `relative cta-ylw px-6 sm:px-8 py-3 sm:py-3.5 text-base sm:text-lg font-semibold inline-block overflow-hidden ${disabled ? "opacity-60 cursor-not-allowed" : ""}`;
+  const commonClass = `relative cta-ylw px-6 sm:px-8 py-3 sm:py-3.5 text-base sm:text-lg font-semibold inline-block overflow-hidden shadow-[0_4px_16px_rgba(255,233,0,0.25),_0_2px_8px_rgba(255,233,0,0.15)] hover:shadow-[0_6px_20px_rgba(255,233,0,0.35),_0_3px_12px_rgba(255,233,0,0.2)] transition-all duration-300 transform hover:scale-105 ${disabled ? "opacity-60 cursor-not-allowed" : ""}`;
 
   const Content = (
     <>

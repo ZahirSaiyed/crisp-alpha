@@ -34,7 +34,7 @@ export default function AppHeader() {
     >
       <div className="mx-auto max-w-7xl px-6 h-full flex items-center gap-3">
         <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.98 }}>
-          <Link href="/" className="display-wordmark text-[color:var(--electric-pink)] text-3xl sm:text-5xl font-semibold tracking-wide">
+          <Link href="/" className="display-wordmark text-[color:var(--bright-purple)] text-3xl sm:text-5xl font-semibold tracking-wide">
             CRISP
           </Link>
         </motion.div>

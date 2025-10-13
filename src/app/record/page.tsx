@@ -44,7 +44,7 @@ function buildPrompts(persona: Persona): Prompt[] {
       { id: "js-clarity-2", title: "What’s a project you’re most proud of?", category: "Clarity", icon: CATEGORY_ICON.Clarity },
       { id: "js-authority-1", title: "Why should we hire you over other candidates?", category: "Authority", icon: CATEGORY_ICON.Authority },
       { id: "js-authority-2", title: "Tell me about a time you influenced a decision.", category: "Authority", icon: CATEGORY_ICON.Authority },
-      { id: "js-calm-1", title: "Tell me about yourself.", subtitle: "Classic opener — nerves spike here.", category: "Calmness", icon: CATEGORY_ICON.Calmness },
+      { id: "js-calm-1", title: "Tell me about yourself.", category: "Calmness", icon: CATEGORY_ICON.Calmness },
       { id: "js-calm-2", title: "Describe a challenge you faced and how you handled it.", category: "Calmness", icon: CATEGORY_ICON.Calmness },
       { id: "js-engage-1", title: "What excites you about this role?", category: "Engagement", icon: CATEGORY_ICON.Engagement },
       { id: "js-engage-2", title: "Tell me about a time you worked on a team — what was your role?", category: "Engagement", icon: CATEGORY_ICON.Engagement },
@@ -270,7 +270,7 @@ export default function RecordPage() {
   }, [audioUrl, hasAnyMetrics]);
 
   return (
-    <main className="min-h-screen bg-white text-[color:var(--ink)]">
+    <main className="min-h-screen bg-gradient-to-b from-[#F9F9FB] to-white text-[color:var(--ink)]">
       {/* Hidden recorder to handle programmatic start/stop. UI suppressed via props and visually hidden wrapper. */}
       <div className="mx-auto w-full max-w-[560px]">
         <Recorder
@@ -291,9 +291,9 @@ export default function RecordPage() {
       </div>
 
       {!audioUrl && (
-        <section className="relative mx-auto max-w-5xl px-6 min-h-[calc(100vh-4rem)] flex flex-col items-stretch justify-center gap-5 py-8">
+        <section className="relative mx-auto max-w-5xl px-6 min-h-[calc(100vh-4rem)] flex flex-col items-stretch justify-center gap-3 py-8">
           {/* Persona tabs */}
-          <div role="tablist" aria-label="Personas" className="mx-auto w-full max-w-[560px] flex items-center justify-center gap-2">
+          <div role="tablist" aria-label="Personas" className="mx-auto w-full max-w-[640px] flex items-center justify-center gap-1.5">
             {(["jobSeeker","productManager","surprise"] as Persona[]).map((key) => {
               const active = persona === key;
               return (
@@ -302,21 +302,21 @@ export default function RecordPage() {
                   role="tab"
                   aria-selected={active}
                   onClick={() => setPersona(key)}
-                  className={`px-4 py-2 text-[13px] font-medium rounded-full transition transform ${active ? "bg-[color:var(--ink)] text-white" : "bg-[color:var(--muted-1)] text-[color:rgba(11,11,12,0.8)] hover:bg-[color:var(--muted-1)]/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--bright-purple)]"}`}
+                  className={`px-3 sm:px-4 py-2 sm:py-2.5 text-[12px] sm:text-[13px] font-medium rounded-full transition-all duration-200 transform hover:scale-105 ${active ? "bg-[color:var(--bright-purple)] text-white shadow-[0_4px_12px_rgba(122,92,255,0.25)]" : "bg-white border border-[color:var(--muted-2)] text-[color:rgba(11,11,12,0.8)] hover:border-[color:var(--bright-purple)]/30 hover:shadow-[0_2px_8px_rgba(122,92,255,0.1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--bright-purple)]"}`}
                 >
-                  <span className="mr-1">{PERSONA_LABELS[key as Persona].icon}</span>
+                  <span className="mr-1 sm:mr-1.5">{PERSONA_LABELS[key as Persona].icon}</span>
                   {PERSONA_LABELS[key as Persona].label}
                 </button>
               );
             })}
           </div>
-          <div className="mx-auto w-full max-w-[560px] -mt-1 text-center text-[12px] text-[color:rgba(11,11,12,0.55)]">
+          <div className="mx-auto w-full max-w-[640px] -mt-1 mb-1 text-center text-[12px] text-[color:rgba(11,11,12,0.55)]">
             {PERSONA_LABELS[persona].sub}
           </div>
 
           <PromptSwiper key={`ps-${persona}`} prompts={personaPrompts} onSelect={(p) => setSelectedPrompt(p)} />
           {/* Primary recording control: shown directly below the prompt for HCI clarity */}
-          <div className="mx-auto w-full max-w-[560px] flex flex-col items-center gap-2 pt-1">
+          <div className="mx-auto w-full max-w-[640px] flex flex-col items-center gap-2 -mt-1">
             {!isRecording ? (
               <button
                 type="button"
@@ -332,18 +332,19 @@ export default function RecordPage() {
                     border-radius: 9999px;
                     background: #ef4444; /* red-600 */
                     transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 180ms, background-color 180ms;
+                    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4), 0 2px 8px rgba(239, 68, 68, 0.15);
                   }
                   .rec-btn:hover { 
-                    transform: scale(1.06);
-                    box-shadow: 0 10px 22px rgba(239, 68, 68, 0.28), 0 2px 6px rgba(239, 68, 68, 0.18);
+                    transform: scale(1.08);
+                    box-shadow: 0 0 0 8px rgba(239, 68, 68, 0.1), 0 12px 28px rgba(239, 68, 68, 0.35), 0 4px 12px rgba(239, 68, 68, 0.2);
                     background: #f05252; /* red-500 */
                   }
                   .rec-btn::after {
                     content: "";
                     position: absolute;
-                    inset: -6px;
+                    inset: -8px;
                     border-radius: inherit;
-                    border: 2px solid rgba(239, 68, 68, 0.45);
+                    border: 2px solid rgba(122, 92, 255, 0.3);
                     opacity: 0;
                     transform: scale(0.9);
                     transition: opacity 200ms, transform 200ms;
@@ -353,10 +354,6 @@ export default function RecordPage() {
                 <style jsx>{`
                   @keyframes pulse-ring { from { transform: scale(1); opacity: 0.45; } to { transform: scale(1.5); opacity: 0; } }
                 `}</style>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true" className="pointer-events-none">
-                  <path d="M12 14a3 3 0 0 0 3-3V7a3 3 0 1 0-6 0v4a3 3 0 0 0 3 3Z" fill="white"/>
-                  <path d="M5 11a1 1 0 1 0-2 0 9 9 0 0 0 8 8v3H9a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2h-2v-3a9 9 0 0 0 8-8 1 1 0 1 0-2 0 7 7 0 1 1-14 0Z" fill="white"/>
-                </svg>
                 <span className="absolute inset-0 rounded-full" style={{ boxShadow: "0 0 0 0 rgba(239,68,68,0.5)", animation: "pulse-ring 1.6s ease-out infinite" }} />
               </button>
             ) : (
@@ -372,7 +369,7 @@ export default function RecordPage() {
                 </span>
               </button>
             )}
-            <span className="text-xs text-[color:rgba(11,11,12,0.6)]" aria-live="polite">{isRecording ? "Recording…" : "Tap to start recording"}</span>
+            <span className="text-xs text-[color:rgba(11,11,12,0.6)]" aria-live="polite">{isRecording ? "Recording…" : "Ready when you are"}</span>
           </div>
 
           {/* Single, canonical recording control is handled by the embedded <Recorder /> via ref. */}
@@ -385,7 +382,7 @@ export default function RecordPage() {
 
           {(aiCoach || insight) && (
             <div className="rounded-[20px] shadow-[0_12px_40px_rgba(0,0,0,0.06)] bg-white/90 backdrop-blur border border-[color:var(--muted-2)] p-5 sm:p-6">
-              <div className="text-[11px] uppercase tracking-[0.08em] text-[color:rgba(11,11,12,0.55)] mb-2">Coach Insight</div>
+              <div className="text-[11px] uppercase tracking-[0.08em] text-[color:var(--bright-purple)] mb-2 font-medium">Coach Insight</div>
               <div className="text-[22px] sm:text-[26px] font-extrabold leading-snug tracking-[-0.01em]">{aiCoach?.headline || insight?.headline}</div>
               <div className="text-sm sm:text-base mt-2 text-[color:rgba(11,11,12,0.75)]">{aiCoach?.subtext || insight?.subtext}</div>
               {selectedPrompt && (

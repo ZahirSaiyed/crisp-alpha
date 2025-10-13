@@ -16,7 +16,7 @@ export default function PrivacyPage() {
           <div className="space-y-6">
             <div>
               <h2 className="text-xl font-semibold mb-3">What we collect</h2>
-              <p>Audio clips are sent for analysis only when you tap &quot;Analyze&quot; after recording. We do not collect any personal information or store your recordings.</p>
+              <p>Audio clips are sent for analysis automatically when you finish recording. We do not collect any personal information or store your recordings.</p>
             </div>
             
             <div>
@@ -26,7 +26,7 @@ export default function PrivacyPage() {
             
             <div>
               <h2 className="text-xl font-semibold mb-3">Third parties</h2>
-              <p>We use Deepgram for transcription and Google for AI feedback. Both services process your audio statelessly and do not retain your data.</p>
+              <p>We use Deepgram for transcription and Google Gemini for AI feedback. Both services process your audio statelessly and do not retain your data.</p>
             </div>
             
             <div>
@@ -35,8 +35,7 @@ export default function PrivacyPage() {
             </div>
             
             <div>
-              <h2 className="text-xl font-semibold mb-3">Contact & jurisdiction</h2>
-              <p>Questions? Contact us at privacy@crisp.app. Last updated: December 2024. Jurisdiction: United States.</p>
+              <p className="text-sm text-gray-600">Last updated: October 2025</p>
             </div>
           </div>
         </div>

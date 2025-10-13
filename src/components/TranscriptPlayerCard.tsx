@@ -131,7 +131,7 @@ export default function TranscriptPlayerCard({ src, tokens, paragraphs, transcri
   return (
     <div className="rounded-[20px] shadow-[0_12px_40px_rgba(0,0,0,0.06)] bg-white/90 backdrop-blur border border-[color:var(--muted-2)] p-5 sm:p-6">
       <audio ref={audioRef} src={src} className="hidden" />
-      <div className="text-[11px] uppercase tracking-[0.08em] text-[color:rgba(11,11,12,0.55)] mb-2">Transcript</div>
+      <div className="text-[11px] uppercase tracking-[0.08em] text-[color:var(--bright-purple)] mb-2 font-medium">Transcript</div>
 
       <div ref={containerRef} className="text-[15px] sm:text-[16px] leading-7 sm:leading-8 max-h-64 overflow-auto space-y-4">
         {toks.length > 0 ? (

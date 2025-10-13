@@ -12,7 +12,7 @@ export default function TranscriptPanel({ tokens, pauses, onSeek, paragraphs, tr
   if (paras.length > 0) {
     return (
       <div className="rounded-[12px] border border-[color:var(--muted-2)] bg-white p-4">
-        <h2 className="text-base font-semibold mb-2">Transcript</h2>
+        <h2 className="text-[11px] uppercase tracking-[0.08em] text-[color:var(--bright-purple)] mb-2 font-medium">Transcript</h2>
         <div className="text-sm leading-7 max-h-60 overflow-auto space-y-4">
           {paras.map((p, i) => (
             <p key={i} className="whitespace-pre-wrap">
@@ -28,7 +28,7 @@ export default function TranscriptPanel({ tokens, pauses, onSeek, paragraphs, tr
   if (typeof transcript === "string" && transcript.trim().length > 0) {
     return (
       <div className="rounded-[12px] border border-[color:var(--muted-2)] bg-white p-4">
-        <h2 className="text-base font-semibold mb-2">Transcript</h2>
+        <h2 className="text-[11px] uppercase tracking-[0.08em] text-[color:var(--bright-purple)] mb-2 font-medium">Transcript</h2>
         <div className="text-sm leading-7 max-h-60 overflow-auto whitespace-pre-wrap">
           {transcript}
         </div>
