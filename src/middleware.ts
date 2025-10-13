@@ -46,7 +46,7 @@ export function middleware(request: NextRequest) {
     // Origin validation for API routes
     if (pathname.startsWith('/api/')) {
       const origin = request.headers.get('origin')
-      if (origin && origin !== ENV.NEXT_PUBLIC_BASE_URL) {
+      if (origin && ENV.NEXT_PUBLIC_BASE_URL && origin !== ENV.NEXT_PUBLIC_BASE_URL) {
         const response = new NextResponse('Forbidden', { status: 403 })
         response.headers.set('X-Request-ID', requestId)
         
