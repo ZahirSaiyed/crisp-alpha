@@ -78,7 +78,6 @@ export default function PromptSwiper({ prompts, onSelect }: { prompts: Prompt[];
                   onSwipeRight={() => goPrev()}
                   onNext={() => goNext()}
                   onPrev={() => goPrev()}
-                  onPrimary={primaryAction}
                 />
               )}
             </AnimatePresence>
@@ -89,7 +88,7 @@ export default function PromptSwiper({ prompts, onSelect }: { prompts: Prompt[];
   );
 }
 
-function SwipeCard({ prompt, isRecording, index, total, onSwipeLeft, onSwipeRight, onNext, onPrev, onPrimary, enterDir, exitDir }: { prompt: Prompt; isRecording: boolean; index: number; total: number; onSwipeLeft: () => void; onSwipeRight: () => void; onNext: () => void; onPrev: () => void; onPrimary: () => void; enterDir: Dir; exitDir: Dir }) {
+function SwipeCard({ prompt, isRecording, index, total, onSwipeLeft, onSwipeRight, onNext, onPrev, enterDir, exitDir }: { prompt: Prompt; isRecording: boolean; index: number; total: number; onSwipeLeft: () => void; onSwipeRight: () => void; onNext: () => void; onPrev: () => void; enterDir: Dir; exitDir: Dir }) {
   const x = useMotionValue(0);
   const rot = useTransform(x, [-220, 0, 220], [-8, 0, 8]);
 
