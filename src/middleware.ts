@@ -22,12 +22,12 @@ const CSP_CONFIG = {
   ],
   production: [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline'", // Next.js requires inline scripts for hydration
+    "script-src 'self' 'unsafe-inline' https://us-assets.i.posthog.com https://us.i.posthog.com", // Next.js + PostHog
     "style-src 'self' 'unsafe-inline'", // Still needed for Tailwind
-    "img-src 'self' blob: data:",
+    "img-src 'self' blob: data: https:",
     "media-src 'self' blob:",
-    "connect-src 'self'",
-    "font-src 'self'",
+    "connect-src 'self' https://us.i.posthog.com https://us-assets.i.posthog.com", // PostHog API calls
+    "font-src 'self' data:",
     "object-src 'none'",
     "base-uri 'self'",
     "frame-ancestors 'none'",
