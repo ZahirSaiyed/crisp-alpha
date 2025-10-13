@@ -126,7 +126,7 @@ export default function RecordPage() {
     return metricsApiRef.current;
   }
 
-  async function startCompute(url: string, blob: Blob) {
+  const startCompute = useCallback(async (url: string, blob: Blob) => {
     try {
       console.log('🎯 startCompute called with URL:', url, 'and blob size:', blob.size);
       computeInFlightRef.current = true;
@@ -154,7 +154,7 @@ export default function RecordPage() {
         
         console.warn('🧮 Computing metrics...');
         const summary = await api.computeCoreFromPcm(pcm, sampleRate);
-        console.warn('✅ Metrics computed:', summary);
+      console.warn('✅ Metrics computed');
         
         const delivery: Partial<DeliverySummary> = {
           endRushIndex: summary.endRushIndexApprox ?? 0,
@@ -185,7 +185,7 @@ export default function RecordPage() {
       computeInFlightRef.current = false;
       console.warn('🏁 startCompute finished');
     }
-  }
+  }, []);
 
   const handlePhaseChange = useCallback((p: string) => {
     console.warn('🔄 Phase changed to:', p);

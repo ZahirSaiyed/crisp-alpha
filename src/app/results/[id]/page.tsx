@@ -33,9 +33,9 @@ export default function ResultsPage() {
         const res = await fetch(`/api/coach/${id}`, { cache: "no-store" });
         const data = await res.json();
         if (canceled) return;
-        const st = (data?.status as string) || "pending";
+        const st: "pending"|"ready"|"error" | string = (data?.status as string) || "pending";
         if (st === "ready" || st === "error") {
-          setCoachStatus(st as any);
+          setCoachStatus(st as "ready"|"error");
           setPolling(false);
           return;
         }
