@@ -46,6 +46,7 @@ function parseSections(text: string): Sections | null {
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
+    if (!line) continue;
     const maybe = normalizeHeading(line);
     if (maybe) {
       current = maybe;
@@ -175,9 +176,15 @@ export default function FeedbackTile({
             strengths: Array.isArray((data as Record<string, unknown>).strengths) ? (data as Record<string, unknown>).strengths as string[] : [],
             weaknesses: Array.isArray((data as Record<string, unknown>).weaknesses) ? (data as Record<string, unknown>).weaknesses as string[] : [],
             recommendations: Array.isArray((data as Record<string, unknown>).recommendations) ? (data as Record<string, unknown>).recommendations as string[] : [],
-            coachInsight: (data as Record<string, unknown>).coachInsight as Structured["coachInsight"] | undefined,
-            improvedAnswer: typeof (data as Record<string, unknown>).improvedAnswer === "string" ? (data as Record<string, unknown>).improvedAnswer as string : undefined,
           };
+          const coachInsight = (data as Record<string, unknown>).coachInsight;
+          if (coachInsight && typeof coachInsight === "object") {
+            s.coachInsight = coachInsight as NonNullable<Structured["coachInsight"]>;
+          }
+          const improvedAnswer = (data as Record<string, unknown>).improvedAnswer;
+          if (typeof improvedAnswer === "string") {
+            s.improvedAnswer = improvedAnswer;
+          }
           setJson(s);
           onStructuredRef.current?.(s);
         } else {

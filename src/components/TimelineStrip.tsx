@@ -59,6 +59,7 @@ export default function TimelineStrip({ tokens, durationSec, corridor = { minWpm
       ctx.beginPath();
       for (let i = 0; i < volume.length; i++) {
         const v = volume[i];
+        if (!v) continue;
         const x = xFor(v.t);
         const y = heightCss - pad - Math.min(1, Math.max(0, v.level)) * (heightCss - 2 * pad);
         if (i === 0) ctx.moveTo(x, y);
@@ -75,6 +76,7 @@ export default function TimelineStrip({ tokens, durationSec, corridor = { minWpm
     ctx.beginPath();
     for (let i = 0; i < series.length; i++) {
       const p = series[i];
+      if (!p) continue;
       const x = xFor(p.t);
       const y = yFor(p.wpm);
       if (i === 0) ctx.moveTo(x, y);
@@ -120,7 +122,7 @@ export default function TimelineStrip({ tokens, durationSec, corridor = { minWpm
       if (annotations.length === 0) return;
       if (e.key === "ArrowRight") setAnnIdx((i) => (i + 1) % annotations.length);
       if (e.key === "ArrowLeft") setAnnIdx((i) => (i - 1 + annotations.length) % annotations.length);
-      if (e.key === "Enter") onSeek?.(annotations[annIdx].t);
+      if (e.key === "Enter") onSeek?.(annotations[annIdx]?.t ?? 0);
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);

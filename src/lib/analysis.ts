@@ -23,6 +23,7 @@ export function detectPauses(words: WordToken[], minGapSec = 0.5) {
   for (let i = 1; i < tokens.length; i++) {
     const prev = tokens[i - 1];
     const curr = tokens[i];
+    if (!prev || !curr) continue;
     const gap = (curr.start as number) - (prev.end as number);
     if (gap >= minGapSec) {
       pauses.push({ time: prev.end as number, duration: gap });
@@ -37,6 +38,7 @@ export function strategicPauseCoverage(words: WordToken[], pauses: Array<{ time:
   const numericIdxs: number[] = [];
   for (let i = 0; i < tokens.length; i++) {
     const w = tokens[i];
+    if (!w) continue;
     const text = (w.word || "").toString();
     if (/\b\d[\d,\.]*%?\b/.test(text)) numericIdxs.push(i);
   }
@@ -44,6 +46,7 @@ export function strategicPauseCoverage(words: WordToken[], pauses: Array<{ time:
   let withPause = 0;
   for (const idx of numericIdxs) {
     const tok = tokens[idx];
+    if (!tok) continue;
     const endT = tok.end as number;
     const has = pauses.some((p) => p.duration >= threshold && p.time >= endT && p.time <= endT + windowAfterSec);
     if (has) withPause += 1;

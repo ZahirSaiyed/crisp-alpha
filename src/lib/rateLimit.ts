@@ -42,6 +42,6 @@ export function getRateLimitInfo(ip: string): { remaining: number; resetTime: nu
   
   return {
     remaining: Math.max(0, MAX_REQUESTS - validRequests.length),
-    resetTime: validRequests.length > 0 ? validRequests[0] + WINDOW_MS : now + WINDOW_MS,
+    resetTime: validRequests.length > 0 ? (validRequests[0] ?? now) + WINDOW_MS : now + WINDOW_MS,
   }
 }

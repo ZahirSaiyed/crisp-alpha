@@ -56,8 +56,10 @@ export default function TranscriptPlayerCard({ src, tokens, paragraphs, transcri
       const ct = el.currentTime || 0;
       let idx: number | null = null;
       for (let i = 0; i < tokens.length; i++) {
-        const s = typeof tokens[i].start === "number" ? tokens[i].start as number : -1;
-        const e = typeof tokens[i].end === "number" ? tokens[i].end as number : -1;
+        const token = tokens[i];
+        if (!token) continue;
+        const s = typeof token.start === "number" ? token.start as number : -1;
+        const e = typeof token.end === "number" ? token.end as number : -1;
         if (s >= 0 && e >= 0 && ct >= s && ct <= e) { idx = i; break; }
       }
       setActiveIdx(idx);
@@ -81,7 +83,9 @@ export default function TranscriptPlayerCard({ src, tokens, paragraphs, transcri
       const ct = el.currentTime || 0;
       let idx = -1;
       for (let i = 0; i < paragraphs.length; i++) {
-        const ps = typeof paragraphs[i].start === "number" ? (paragraphs[i].start as number) : -1;
+        const paragraph = paragraphs[i];
+        if (!paragraph) continue;
+        const ps = typeof paragraph.start === "number" ? (paragraph.start as number) : -1;
         if (ps >= 0 && ps <= ct) idx = i; else break;
       }
       if (idx >= 0 && containerRef.current) {
