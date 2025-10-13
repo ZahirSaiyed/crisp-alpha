@@ -342,6 +342,13 @@ export default function RecordPage() {
             }}
             onLoadingChange={(v) => setFeedbackLoading(Boolean(v))}
           />
+          
+          {/* Privacy disclaimer */}
+          <div className="rounded-lg bg-gray-50 border border-gray-200 p-4">
+            <p className="text-xs text-gray-600 text-center">
+              🔒 Your audio was securely processed and immediately discarded. Nothing is stored.
+            </p>
+          </div>
         </section>
       )}
     </main>

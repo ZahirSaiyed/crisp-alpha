@@ -29,7 +29,13 @@ export default function AppHeader() {
             CRISP
           </Link>
         </motion.div>
-        <div className="ml-auto hidden sm:flex items-center gap-2">
+        <div className="ml-auto hidden sm:flex items-center gap-4">
+          <Link
+            href="/privacy"
+            className="text-sm text-[color:rgba(11,11,12,0.6)] hover:text-[color:var(--ink)] transition-colors"
+          >
+            Privacy
+          </Link>
           <a
             href="#waitlist"
             className="px-4 py-2 rounded-full font-semibold text-[13px]"

@@ -13,24 +13,19 @@ export default function ResultsPage() {
   const id = String(params?.id || "");
   const session = getSession(id);
 
+  // Coach status polling (pill) - moved to top to avoid conditional hooks
+  const [coachStatus, setCoachStatus] = useState<"pending"|"ready"|"error">("pending");
+  const [polling, setPolling] = useState(false);
+
   useEffect(() => {
     if (!session) router.back();
   }, [session, router]);
 
-  if (!session) return null;
-
-  const tokens = session.tokens as WordToken[];
-  const pauses = detectPauses(tokens, 0.5);
-  const talkTimeSec = session.durationSec;
-  const minutes = talkTimeSec > 0 ? talkTimeSec / 60 : 0;
-  const wpm = minutes > 0 ? tokens.length / minutes : null;
-  const fillers = detectFillerCounts(tokens);
-
-  // Coach status polling (pill)
-  const [coachStatus, setCoachStatus] = useState<"pending"|"ready"|"error">("pending");
-  const [polling, setPolling] = useState(false);
   useEffect(() => {
-    if (!process.env.NEXT_PUBLIC_FF_PAGE_SPLIT) return; // feature flag
+    if (!process.env.NEXT_PUBLIC_FF_PAGE_SPLIT) {
+      setCoachStatus("error");
+      return; // feature flag
+    }
     let canceled = false;
     let attempts = 0;
     setPolling(true);
@@ -60,6 +55,15 @@ export default function ResultsPage() {
     setTimeout(tick, 0);
     return () => { canceled = true; };
   }, [id]);
+
+  if (!session) return null;
+
+  const tokens = session.tokens as WordToken[];
+  const pauses = detectPauses(tokens, 0.5);
+  const talkTimeSec = session.durationSec;
+  const minutes = talkTimeSec > 0 ? talkTimeSec / 60 : 0;
+  const wpm = minutes > 0 ? tokens.length / minutes : null;
+  const fillers = detectFillerCounts(tokens);
 
   return (
     <main className="min-h-screen bg-white text-[color:var(--ink)]">

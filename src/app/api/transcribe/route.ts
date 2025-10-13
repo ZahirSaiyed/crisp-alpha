@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
+// Disable body parser to handle streaming with size limits
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
 type DeepgramWord = { word?: string; start?: number; end?: number; confidence?: number };
 type DeepgramAlternative = { transcript?: string; words?: DeepgramWord[] };
 type DeepgramResult = {
@@ -37,19 +44,6 @@ function mapParagraphs(alt: DeepgramAlternativeWithParagraphs | undefined): Para
   return out;
 }
 
-function inferMimeFromKey(key: string): string | undefined {
-  const lower = key.toLowerCase();
-  if (lower.endsWith(".webm")) return "audio/webm";
-  if (lower.endsWith(".weba")) return "audio/webm";
-  if (lower.endsWith(".ogg") || lower.endsWith(".oga")) return "audio/ogg";
-  if (lower.endsWith(".mp3")) return "audio/mpeg";
-  if (lower.endsWith(".m4a") || lower.endsWith(".mp4")) return "audio/mp4";
-  if (lower.endsWith(".wav")) return "audio/wav";
-  if (lower.endsWith(".flac")) return "audio/flac";
-  if (lower.endsWith(".aac")) return "audio/aac";
-  if (lower.endsWith(".caf")) return "audio/x-caf";
-  return undefined;
-}
 
 function normalizeMime(m: string | undefined): string | undefined {
   if (!m) return undefined;
@@ -57,69 +51,32 @@ function normalizeMime(m: string | undefined): string | undefined {
   return base || undefined;
 }
 
-function buildDeepgramHints(mimetype?: string): Record<string, unknown> {
-  const opts: Record<string, unknown> = {};
-  if (mimetype) {
-    const base = normalizeMime(mimetype);
-    if (base) opts.mimetype = base;
-  }
-  return opts;
-}
 
 export async function POST(request: NextRequest) {
+  const requestId = Math.random().toString(36).slice(2, 10);
+  const startTime = Date.now();
+  
   try {
-    // New path: JSON body with S3 object key -> fetch from S3
-    const contentType = request.headers.get("content-type") || "";
-    if (contentType.includes("application/json")) {
-      const body = await request.json().catch(() => ({} as unknown));
-      const obj = (body ?? {}) as Record<string, unknown>;
-      const objectKey = typeof obj.objectKey === "string" ? obj.objectKey : undefined;
-      if (objectKey) {
-        const bucket = process.env.S3_BUCKET;
-        const region = process.env.S3_REGION;
-        if (!bucket || !region) {
-          return NextResponse.json({ error: "S3 not configured" }, { status: 500 });
-        }
-        // Lazy import AWS only when needed
-        const { S3Client, GetObjectCommand } = await import("@aws-sdk/client-s3");
-        const s3 = new S3Client({ region });
-        const getCmd = new GetObjectCommand({ Bucket: bucket, Key: objectKey });
-        const res = await s3.send(getCmd);
-        const stream = res.Body as unknown as NodeJS.ReadableStream | undefined;
-        if (!stream) {
-          return NextResponse.json({ error: "Failed to read audio from storage" }, { status: 500 });
-        }
-        const audioBuffer = await streamToBuffer(stream);
-        // Prefer S3 object ContentType; if absent, infer from key extension
-        const s3ContentType = typeof res.ContentType === "string" ? res.ContentType : undefined;
-        const inferredType = inferMimeFromKey(objectKey);
-        const mimetype = normalizeMime(s3ContentType) || inferredType;
-
-        // Use Deepgram REST to avoid SDK bundling issues
-        const resp = await fetch("https://api.deepgram.com/v1/listen?smart_format=true&filler_words=true&paragraphs=true&model=nova-2&language=en&detect_language=false", {
-          method: "POST",
-          headers: {
-            "Authorization": `Token ${process.env.DEEPGRAM_API_KEY || ""}`,
-            "Content-Type": (mimetype || "audio/webm") as string,
-          },
-          body: audioBuffer,
-        });
-        if (!resp.ok) {
-          const txt = await resp.text().catch(() => "");
-          return NextResponse.json({ error: `Deepgram error: ${resp.status}`, _debug: { txt } }, { status: 500 });
-        }
-        const result = await resp.json();
-        const dg = result as unknown as DeepgramResult;
-        const alt = dg?.results?.channels?.[0]?.alternatives?.[0] as DeepgramAlternativeWithParagraphs | undefined;
-        const transcript = alt?.transcript ?? undefined;
-        const words = alt?.words ?? [];
-        const paragraphs: Paragraph[] = mapParagraphs(alt);
-        return NextResponse.json({ transcript: transcript || "No speech detected", words, paragraphs, _raw: result, source: "s3", _debug: { bytes: audioBuffer.byteLength, mimetype } });
-      }
+    // Security: Check origin header
+    const origin = request.headers.get('origin');
+    const expectedOrigin = process.env.NEXT_PUBLIC_BASE_URL;
+    if (origin && expectedOrigin && origin !== expectedOrigin) {
+      console.log(`[transcribe] status=403 origin_mismatch requestId=${requestId}`);
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // If fixture mode is on, return the saved JSON from disk
-    if (process.env.USE_FIXTURE === "true") {
+    // Security: Check content type (allow multipart/form-data for FormData uploads)
+    const contentType = request.headers.get("content-type") || "";
+    const isFormData = contentType.includes("multipart/form-data");
+    const allowedMimes = ['audio/webm', 'audio/ogg', 'audio/mpeg', 'audio/wav'];
+    
+    if (!isFormData && !allowedMimes.some(m => contentType.includes(m))) {
+      console.log(`[transcribe] status=400 invalid_mime=${contentType} requestId=${requestId}`);
+      return NextResponse.json({ error: 'Invalid audio format' }, { status: 400 });
+    }
+
+    // If fixture mode is on (dev only), return the saved JSON from disk
+    if (process.env.NODE_ENV !== 'production' && process.env.USE_FIXTURE === "true") {
       try {
         const fs = await import("fs");
         const path = await import("path");
@@ -139,68 +96,124 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const formData = await request.formData();
-    const audioFile = formData.get("audio") as File;
-    
-    if (!audioFile) {
-      return NextResponse.json({ error: "No audio file provided" }, { status: 400 });
-    }
+    let audioBuffer: Buffer;
+    let fileMime: string | undefined;
 
-    // Convert File to Buffer
-    const audioBuffer = Buffer.from(await audioFile.arrayBuffer());
-    const fileMimeRaw = typeof (audioFile as unknown as { type?: string }).type === "string" ? (audioFile as unknown as { type?: string }).type : undefined;
-    const fileMime = normalizeMime(fileMimeRaw);
-    
-    // Create Deepgram client
-    const resp = await fetch("https://api.deepgram.com/v1/listen?smart_format=true&filler_words=true&paragraphs=true&model=nova-2&language=en&detect_language=false", {
-      method: "POST",
-      headers: {
-        "Authorization": `Token ${process.env.DEEPGRAM_API_KEY || ""}`,
-        "Content-Type": (fileMime || "audio/webm") as string,
-      },
-      body: audioBuffer,
-    });
-    if (!resp.ok) {
-      const txt = await resp.text().catch(() => "");
-      return NextResponse.json({ error: `Deepgram error: ${resp.status}`, _debug: { txt, bytes: audioBuffer.byteLength, mimetype: fileMime } }, { status: 500 });
-    }
-    const result = await resp.json();
-
-    // Optionally save full result to fixture file on disk when SAVE_FIXTURE=true
-    try {
-      if (process.env.SAVE_FIXTURE === "true") {
-        const fs = await import("fs");
-        const path = await import("path");
-        const fixturesDir = path.resolve(process.cwd(), "src/fixtures");
-        const filePath = path.join(fixturesDir, "transcript.json");
-        if (!fs.existsSync(fixturesDir)) fs.mkdirSync(fixturesDir, { recursive: true });
-        fs.writeFileSync(filePath, JSON.stringify(result, null, 2), "utf8");
+    if (isFormData) {
+      // Handle FormData upload
+      const formData = await request.formData();
+      const audioFile = formData.get("audio") as File;
+      
+      if (!audioFile) {
+        console.log(`[transcribe] status=400 no_audio_file requestId=${requestId}`);
+        return NextResponse.json({ error: "No audio file provided" }, { status: 400 });
       }
-    } catch (e) {
-      console.warn("Could not save fixture:", e);
-    }
 
-    const dg = result as unknown as DeepgramResult;
-    const alt = dg?.results?.channels?.[0]?.alternatives?.[0] as DeepgramAlternativeWithParagraphs | undefined;
-    const transcript = alt?.transcript ?? undefined;
-    const words = alt?.words ?? [];
-    const paragraphs: Paragraph[] = mapParagraphs(alt);
-  return NextResponse.json({ transcript: transcript || "No speech detected", words, paragraphs, _raw: result, source: "live", _debug: { bytes: audioBuffer.byteLength, mimetype: fileMime } });
+      // Check file size
+      if (audioFile.size > 20 * 1024 * 1024) { // 20MB
+        console.log(`[transcribe] status=413 size_exceeded=${audioFile.size} requestId=${requestId}`);
+        return NextResponse.json({ error: "File too large" }, { status: 413 });
+      }
+
+      // Validate MIME type
+      const fileType = audioFile.type;
+      if (!allowedMimes.some(m => fileType.includes(m))) {
+        console.log(`[transcribe] status=400 invalid_file_mime=${fileType} requestId=${requestId}`);
+        return NextResponse.json({ error: 'Invalid audio format' }, { status: 400 });
+      }
+
+      audioBuffer = Buffer.from(await audioFile.arrayBuffer());
+      fileMime = normalizeMime(fileType);
+    } else {
+      // Handle direct binary upload
+      const chunks: Buffer[] = [];
+      let size = 0;
+      const MAX_SIZE = 20 * 1024 * 1024; // 20MB
+      
+      const reader = request.body?.getReader();
+      if (!reader) {
+        console.log(`[transcribe] status=400 no_body requestId=${requestId}`);
+        return NextResponse.json({ error: "No audio data provided" }, { status: 400 });
+      }
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          size += value.length;
+          if (size > MAX_SIZE) {
+            console.log(`[transcribe] status=413 size_exceeded=${size} requestId=${requestId}`);
+            return NextResponse.json({ error: "File too large" }, { status: 413 });
+          }
+          
+          chunks.push(Buffer.from(value));
+        }
+      } finally {
+        reader.releaseLock();
+      }
+
+      audioBuffer = Buffer.concat(chunks);
+      fileMime = normalizeMime(contentType);
+    }
     
-  } catch (error) {
-    console.error("Transcription error:", error);
-    return NextResponse.json(
-      { error: "Transcription failed" }, 
-      { status: 500 }
-    );
+    // Create Deepgram client with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout
+    
+    try {
+      const resp = await fetch("https://api.deepgram.com/v1/listen?smart_format=true&filler_words=true&paragraphs=true&model=nova-2&language=en&detect_language=false", {
+        method: "POST",
+        headers: {
+          "Authorization": `Token ${process.env.DEEPGRAM_API_KEY || ""}`,
+          "Content-Type": (fileMime || "audio/webm") as string,
+        },
+        body: audioBuffer,
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!resp.ok) {
+        console.log(`[transcribe] status=500 deepgram_error=${resp.status} requestId=${requestId}`);
+        return NextResponse.json({ error: `Transcription failed` }, { status: 500 });
+      }
+      
+      const result = await resp.json();
+
+      const dg = result as unknown as DeepgramResult;
+      const alt = dg?.results?.channels?.[0]?.alternatives?.[0] as DeepgramAlternativeWithParagraphs | undefined;
+      const transcript = alt?.transcript ?? undefined;
+      const words = alt?.words ?? [];
+      const paragraphs: Paragraph[] = mapParagraphs(alt);
+      
+      const duration = Date.now() - startTime;
+      console.log(`[transcribe] status=200 duration=${duration}ms requestId=${requestId}`);
+      
+      // Immediately free the audio buffer
+      audioBuffer.fill(0);
+      
+      return NextResponse.json({ 
+        transcript: transcript || "No speech detected", 
+        words, 
+        paragraphs, 
+        source: "live" 
+      });
+      
+    } catch (error) {
+      clearTimeout(timeoutId);
+      const duration = Date.now() - startTime;
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log(`[transcribe] status=408 timeout duration=${duration}ms requestId=${requestId}`);
+        return NextResponse.json({ error: "Request timeout" }, { status: 408 });
+      }
+      console.log(`[transcribe] status=500 error duration=${duration}ms requestId=${requestId}`);
+      return NextResponse.json({ error: "Transcription failed" }, { status: 500 });
+    }
+    
+  } catch {
+    const duration = Date.now() - startTime;
+    console.log(`[transcribe] status=500 error duration=${duration}ms requestId=${requestId}`);
+    return NextResponse.json({ error: "Transcription failed" }, { status: 500 });
   }
 } 
-
-async function streamToBuffer(stream: NodeJS.ReadableStream): Promise<Buffer> {
-  const chunks: Buffer[] = [];
-  return await new Promise<Buffer>((resolve, reject) => {
-    stream.on("data", (d) => chunks.push(Buffer.isBuffer(d) ? d : Buffer.from(d)));
-    stream.once("end", () => resolve(Buffer.concat(chunks)));
-    stream.once("error", reject);
-  });
-}

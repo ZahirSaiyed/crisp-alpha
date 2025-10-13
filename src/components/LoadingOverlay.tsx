@@ -45,7 +45,7 @@ function SpinnerDots() {
     animate: (i: number) => ({
       y: [0, -6, 0],
       opacity: [0.6, 1, 0.6],
-      transition: { duration: 0.9, repeat: Infinity, ease: "easeInOut", delay: i * 0.12 },
+      transition: { duration: 0.9, repeat: Infinity, ease: "easeInOut" as const, delay: i * 0.12 },
     }),
   } as const;
   return (

@@ -13,6 +13,9 @@ export default function Page() {
           <p className="mt-3 text-sm sm:text-base font-medium text-[color:#0B0B0C] max-w-lg mx-auto">
             Instant playback, insights, and tools that actually help you grow.
           </p>
+          <p className="mt-2 text-xs text-[color:rgba(11,11,12,0.6)] max-w-md mx-auto">
+            Runs in your browser. Nothing uploaded until you tap Analyze.
+          </p>
           <div className="mt-6 flex justify-center">
             <MagneticCTA href="/record">Start training</MagneticCTA>
           </div>
