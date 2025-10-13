@@ -3,6 +3,7 @@
 import React, { useRef, useState } from "react";
 import { motion, useMotionValue, useSpring } from "framer-motion";
 import Link from "next/link";
+import posthog from "posthog-js";
 
 export default function MagneticCTA({ href, children, disabled = false, loading = false, onClick }: { href?: string; children: React.ReactNode; disabled?: boolean; loading?: boolean; onClick?: (e: React.MouseEvent) => void }) {
   const ref = useRef<HTMLDivElement | null>(null);
@@ -34,6 +35,12 @@ export default function MagneticCTA({ href, children, disabled = false, loading 
       e.stopPropagation();
       return;
     }
+    
+    // Track "start training" click if href is /record
+    if (href === '/record') {
+      posthog.capture('clicked_start_training');
+    }
+    
     const el = ref.current;
     if (el) {
       const rect = el.getBoundingClientRect();

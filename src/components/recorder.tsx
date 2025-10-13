@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Gauge from "./Gauge";
 import { AnimatePresence, motion } from "framer-motion";
+import posthog from "posthog-js";
 
 type EnergyAnalysis = {
   variability: number | null;
@@ -946,6 +947,7 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
       tickRef.current = window.setInterval(() => setElapsed((s) => s + 1), 1000);
 
       setPhase("recording");
+      posthog.capture('started_recording');
     } catch (err: unknown) {
       const error = err as Error;
       if (error?.name === "NotAllowedError") {

@@ -1,6 +1,13 @@
+"use client";
+
 import MagneticCTA from "../components/MagneticCTA";
+import posthog from "posthog-js";
+import { useEffect } from "react";
 
 export default function Page() {
+  useEffect(() => {
+    posthog.capture('viewed_landing_page');
+  }, []);
   return (
     <main className="min-h-screen bg-gradient-to-br from-[#F9F9FB] via-white to-[#F7F4EF] text-[color:var(--ink)]">
       <section className="relative mx-auto max-w-5xl px-6 min-h-[calc(100vh-4rem)] grid grid-cols-1 items-center">

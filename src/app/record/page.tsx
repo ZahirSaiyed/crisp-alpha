@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import * as Comlink from "comlink";
 import { decodeToPCM16kMono } from "../../lib/audio";
-import { DeliverySummary, Goal } from "../../lib/delivery";
+import { DeliverySummary } from "../../lib/delivery";
 import TranscriptPlayerCard from "../../components/TranscriptPlayerCard";
 import PromptSwiper from "../../components/PromptSwiper";
 import Recorder, { RecorderHandle } from "../../components/recorder";
@@ -12,6 +12,7 @@ import { detectFillerCounts, detectPauses, WordToken } from "../../lib/analysis"
 import FeedbackTile from "../../components/FeedbackTile";
 import PracticeAnswerTile from "../../components/PracticeAnswerTile";
 import LoadingOverlay from "../../components/LoadingOverlay";
+import posthog from "posthog-js";
 
 type MetricsRemote = Comlink.Remote<import("../../workers/metrics.worker").MetricsWorker>;
 
@@ -212,8 +213,6 @@ export default function RecordPage() {
     startCompute(url, blob);
   }, [startCompute]);
 
-  const goal: Goal = "Authority";
-  const fullSummary = coreSummary as DeliverySummary | null;
   const [aiCoach, setAiCoach] = useState<{ headline?: string | undefined; subtext?: string | undefined } | null>(null);
   const [aiPractice, setAiPractice] = useState<string | null>(null);
   // Track external loading states only for side-effects (no render dependency)
@@ -299,7 +298,10 @@ export default function RecordPage() {
                   key={key}
                   role="tab"
                   aria-selected={active}
-                  onClick={() => setPersona(key)}
+                  onClick={() => {
+                    setPersona(key);
+                    posthog.capture('clicked_persona', { persona: key });
+                  }}
                   className={`px-3 sm:px-4 py-2 sm:py-2.5 text-[12px] sm:text-[13px] font-medium rounded-full transition-all duration-200 transform hover:scale-105 ${active ? "bg-[color:var(--bright-purple)] text-white shadow-[0_4px_12px_rgba(122,92,255,0.25)]" : "bg-white border border-[color:var(--muted-2)] text-[color:rgba(11,11,12,0.8)] hover:border-[color:var(--bright-purple)]/30 hover:shadow-[0_2px_8px_rgba(122,92,255,0.1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--bright-purple)]"}`}
                 >
                   <span className="mr-1 sm:mr-1.5">{PERSONA_LABELS[key as Persona].icon}</span>

@@ -6,6 +6,7 @@ import { getSession } from "../../../lib/sessionStore";
 import TranscriptPanel from "../../../components/TranscriptPanel";
 import MetricsTile from "../../../components/MetricsTile";
 import { detectFillerCounts, detectPauses, WordToken } from "../../../lib/analysis";
+import posthog from "posthog-js";
 
 export default function ResultsPage() {
   const params = useParams();
@@ -20,6 +21,16 @@ export default function ResultsPage() {
   useEffect(() => {
     if (!session) router.back();
   }, [session, router]);
+
+  useEffect(() => {
+    if (session) {
+      posthog.capture('viewed_results', {
+        session_id: id,
+        duration_sec: session.durationSec,
+        word_count: session.tokens?.length || 0
+      });
+    }
+  }, [session, id]);
 
   useEffect(() => {
     // Feature flag check - coach functionality disabled for now

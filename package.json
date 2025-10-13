@@ -21,6 +21,7 @@
     "comlink": "^4.4.2",
     "framer-motion": "^12.23.16",
     "next": "^15.5.3",
+    "posthog-js": "^1.275.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "redis": "^4.6.0",

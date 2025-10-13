@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { LazyMotion, domAnimation, m, MotionConfig, useMotionValue, useTransform, AnimatePresence } from "framer-motion";
+import posthog from "posthog-js";
 
 type Prompt = { id: string; title: string; subtitle?: string | undefined; category?: string | undefined; icon?: string | undefined };
 
@@ -17,7 +18,14 @@ export default function PromptSwiper({ prompts, onSelect }: { prompts: Prompt[];
   const wrap = useCallback((i: number) => (i + prompts.length) % prompts.length, [prompts.length]);
   const goNext = useCallback(() => setIndex((i) => wrap(i + 1)), [wrap]);
   const goPrev = useCallback(() => setIndex((i) => wrap(i - 1)), [wrap]);
-  const choose = useCallback((p: Prompt) => { onSelect(p); }, [onSelect]);
+  const choose = useCallback((p: Prompt) => { 
+    onSelect(p);
+    posthog.capture('clicked_prompt', { 
+      prompt_id: p.id, 
+      prompt_title: p.title,
+      prompt_category: p.category 
+    });
+  }, [onSelect]);
 
   const primaryAction = useCallback(() => {
     if (!current) return;
