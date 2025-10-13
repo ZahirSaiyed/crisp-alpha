@@ -93,11 +93,11 @@ function SectionBlock({
         <div className="w-6 h-6 rounded-full flex items-center justify-center text-[13px]" style={{ background: accent, color: "white" }}>{icon}</div>
         <h3 className="text-[14px] font-semibold tracking-[-0.01em] text-[color:var(--ink)]">{title}</h3>
       </div>
-      <ul className="pl-0 space-y-1 text-[14px] leading-6 text-[color:rgba(11,11,12,0.85)]">
+      <ul className="pl-0 space-y-2 text-[14px] leading-6 text-[color:rgba(11,11,12,0.85)]">
         {items.map((it, i) => (
-          <li key={i} className="flex items-start gap-2">
-            <span className="mt-[6px] inline-block w-[6px] h-[6px] rounded-full" style={{ background: accent }} />
-            <span>{renderWithBold(it)}</span>
+          <li key={i} className="flex items-start gap-3">
+            <span className="mt-[7px] inline-block w-[8px] h-[8px] rounded-full flex-shrink-0" style={{ background: accent }} />
+            <span className="flex-1">{renderWithBold(it)}</span>
           </li>
         ))}
       </ul>
