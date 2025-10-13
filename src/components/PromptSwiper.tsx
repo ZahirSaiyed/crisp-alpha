@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { LazyMotion, domAnimation, m, MotionConfig, useMotionValue, useTransform, AnimatePresence } from "framer-motion";
 
-type Prompt = { id: string; title: string; subtitle?: string; category?: string; icon?: string };
+type Prompt = { id: string; title: string; subtitle?: string | undefined; category?: string | undefined; icon?: string | undefined };
 
 type Dir = "left" | "right";
 
