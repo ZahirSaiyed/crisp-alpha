@@ -281,7 +281,6 @@ export default function RecordPage() {
           showUI={false}
           onPhaseChange={(p) => { handlePhaseChange(p); setIsRecording(p === "recording"); }}
           onBlobUrlChange={handleBlobUrlChange}
-          onTranscribingChange={(v) => setTranscribingLoading(Boolean(v))}
           onTranscript={({ transcript, words, paragraphs, durationSec }) => {
             setTokens(words ?? null);
             setParagraphs(paragraphs ?? null);
