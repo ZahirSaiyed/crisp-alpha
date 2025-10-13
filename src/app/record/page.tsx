@@ -216,7 +216,7 @@ export default function RecordPage() {
   const goal: Goal = "Authority";
   const fullSummary = coreSummary as DeliverySummary | null;
   const insight = fullSummary ? takeaway(fullSummary, goal) : null;
-  const [aiCoach, setAiCoach] = useState<{ headline?: string; subtext?: string } | null>(null);
+  const [aiCoach, setAiCoach] = useState<{ headline?: string | undefined; subtext?: string | undefined } | null>(null);
   const [aiPractice, setAiPractice] = useState<string | null>(null);
   // Track external loading states only for side-effects (no render dependency)
 
@@ -407,7 +407,13 @@ export default function RecordPage() {
             transcript={rawTranscript}
             tokens={tokens as WordToken[] | null}
             onStructured={(s) => {
-              if (s?.coachInsight) setAiCoach({ headline: s.coachInsight.headline, subtext: s.coachInsight.subtext });
+              if (s?.coachInsight) {
+                const { headline, subtext } = s.coachInsight;
+                setAiCoach({ 
+                  ...(headline !== undefined && { headline }), 
+                  ...(subtext !== undefined && { subtext }) 
+                });
+              }
               if (typeof s?.improvedAnswer === "string") setAiPractice(s.improvedAnswer);
             }}
             onLoadingChange={(v) => setFeedbackLoading(Boolean(v))}
