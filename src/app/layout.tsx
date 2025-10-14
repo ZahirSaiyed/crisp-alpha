@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     description: 'Practice speaking with instant feedback and insights that help you sound as clear as you think. Perfect for interviews, presentations, and public speaking.',
     images: [
       {
-        url: '/og-image.svg',
+        url: '/og-image.png',
         width: 1200,
         height: 630,
         alt: 'Crisp - Practice speaking with instant feedback',
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Crisp - Turn shaky moments into sharp delivery',
     description: 'Practice speaking with instant feedback and insights that help you sound as clear as you think.',
-    images: ['/og-image.svg'],
+    images: ['/og-image.png'],
   },
   icons: {
     icon: '/favicon.ico',
