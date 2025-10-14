@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://crisp-alpha.vercel.app', // Update with your actual domain
+    url: 'https://crisp.up.railway.app',
     siteName: 'Crisp',
     title: 'Crisp - Turn shaky moments into sharp delivery',
     description: 'Practice speaking with instant feedback and insights that help you sound as clear as you think. Perfect for interviews, presentations, and public speaking.',
@@ -39,7 +39,6 @@ export const metadata: Metadata = {
     title: 'Crisp - Turn shaky moments into sharp delivery',
     description: 'Practice speaking with instant feedback and insights that help you sound as clear as you think.',
     images: ['/og-image.svg'],
-    creator: '@crisp', // Update with your Twitter handle
   },
   icons: {
     icon: '/favicon.ico',
