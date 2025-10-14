@@ -35,29 +35,29 @@
     Crisp.
   </text>
   
-  <!-- Subtitle with fun styling -->
+  <!-- Subtitle with clean styling -->
   <text x="600" y="250" text-anchor="middle" font-family="Inter, sans-serif" font-size="42" font-weight="700" fill="#1F2937">
     Turn shaky moments into
   </text>
   
   <text x="600" y="300" text-anchor="middle" font-family="Inter, sans-serif" font-size="42" font-weight="700" fill="url(#purpleGrad)">
-    sharp delivery ✨
+    sharp delivery
   </text>
   
-  <!-- Description with emoji -->
+  <!-- Description clean -->
   <text x="600" y="380" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="500" fill="rgba(31,41,55,0.8)">
-    🎯 Practice speaking with instant feedback
+    Practice speaking with instant feedback
   </text>
   
   <text x="600" y="410" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="500" fill="rgba(31,41,55,0.8)">
-    that helps you sound as clear as you think 💭
+    that helps you sound as clear as you think
   </text>
   
-  <!-- Fun accent elements -->
-  <text x="200" y="120" font-family="Inter, sans-serif" font-size="24" fill="#7A5CFF" opacity="0.6">🎤</text>
-  <text x="1000" y="580" font-family="Inter, sans-serif" font-size="24" fill="#F59E0B" opacity="0.6">🚀</text>
-  <text x="150" y="580" font-family="Inter, sans-serif" font-size="20" fill="#7A5CFF" opacity="0.5">💡</text>
-  <text x="1050" y="100" font-family="Inter, sans-serif" font-size="20" fill="#F59E0B" opacity="0.5">⚡</text>
+  <!-- Clean geometric accent elements -->
+  <rect x="180" y="100" width="12" height="12" rx="2" fill="#7A5CFF" opacity="0.4" transform="rotate(45 186 106)"/>
+  <rect x="1000" y="520" width="16" height="16" rx="3" fill="#F59E0B" opacity="0.3" transform="rotate(45 1008 528)"/>
+  <circle cx="150" cy="550" r="8" fill="#7A5CFF" opacity="0.4"/>
+  <circle cx="1050" cy="80" r="6" fill="#F59E0B" opacity="0.35"/>
   
   <!-- Bottom accent line -->
   <rect x="400" y="480" width="400" height="4" rx="2" fill="url(#purpleGrad)" opacity="0.3"/>
