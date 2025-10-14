@@ -214,7 +214,6 @@ export default function FeedbackTile({
     <section className="relative rounded-[20px] shadow-[0_12px_40px_rgba(0,0,0,0.06)] bg-white/90 backdrop-blur border border-[color:var(--muted-2)] p-5 sm:p-6">
       <div className="flex items-center justify-between mb-2">
         <div className="text-[11px] uppercase tracking-[0.08em] text-[color:var(--bright-purple)] font-medium">Expert Feedback</div>
-        <span className="text-[10px] px-2 py-0.5 rounded-full border border-[color:var(--muted-2)] text-[color:rgba(11,11,12,0.55)]">Auto‑generated</span>
       </div>
 
       {loading && (
