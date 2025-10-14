@@ -11,7 +11,7 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'Crisp - Turn shaky moments into sharp delivery',
+  title: 'Crisp',
   description: 'Practice speaking with instant feedback and insights that help you sound as clear as you think. Perfect for interviews, presentations, and public speaking.',
   keywords: ['public speaking', 'interview prep', 'presentation skills', 'speech practice', 'communication'],
   authors: [{ name: 'Crisp' }],
