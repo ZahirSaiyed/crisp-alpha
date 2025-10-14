@@ -40,10 +40,6 @@ export const metadata: Metadata = {
     description: 'Practice speaking with instant feedback and insights that help you sound as clear as you think.',
     images: ['/og-image.png'],
   },
-  icons: {
-    icon: '/favicon.ico',
-    apple: '/apple-touch-icon.png',
-  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
