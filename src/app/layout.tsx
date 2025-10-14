@@ -11,8 +11,40 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'Crisp',
-  description: 'Practice speaking with instant feedback',
+  title: 'Crisp - Turn shaky moments into sharp delivery',
+  description: 'Practice speaking with instant feedback and insights that help you sound as clear as you think. Perfect for interviews, presentations, and public speaking.',
+  keywords: ['public speaking', 'interview prep', 'presentation skills', 'speech practice', 'communication'],
+  authors: [{ name: 'Crisp' }],
+  creator: 'Crisp',
+  publisher: 'Crisp',
+  robots: 'index, follow',
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    url: 'https://crisp-alpha.vercel.app', // Update with your actual domain
+    siteName: 'Crisp',
+    title: 'Crisp - Turn shaky moments into sharp delivery',
+    description: 'Practice speaking with instant feedback and insights that help you sound as clear as you think. Perfect for interviews, presentations, and public speaking.',
+    images: [
+      {
+        url: '/og-image.svg',
+        width: 1200,
+        height: 630,
+        alt: 'Crisp - Practice speaking with instant feedback',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Crisp - Turn shaky moments into sharp delivery',
+    description: 'Practice speaking with instant feedback and insights that help you sound as clear as you think.',
+    images: ['/og-image.svg'],
+    creator: '@crisp', // Update with your Twitter handle
+  },
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/apple-touch-icon.png',
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
