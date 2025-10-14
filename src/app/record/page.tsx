@@ -266,6 +266,20 @@ export default function RecordPage() {
     return () => window.clearTimeout(t);
   }, [audioUrl, hasAnyMetrics]);
 
+  // Track when results are displayed
+  useEffect(() => {
+    if (audioUrl && hasAnyMetrics) {
+      posthog.capture('viewed_results', {
+        session_id: audioUrl, // Using audioUrl as session identifier
+        duration_sec: durationSec,
+        word_count: tokens?.length || 0,
+        persona: persona,
+        prompt_id: selectedPrompt?.id,
+        prompt_title: selectedPrompt?.title
+      });
+    }
+  }, [audioUrl, hasAnyMetrics, durationSec, tokens, persona, selectedPrompt]);
+
   return (
     <main className="min-h-screen bg-gradient-to-b from-[#F9F9FB] to-white text-[color:var(--ink)]">
       {/* Hidden recorder to handle programmatic start/stop. UI suppressed via props and visually hidden wrapper. */}
