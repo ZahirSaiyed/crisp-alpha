@@ -45,13 +45,6 @@ export default function AppHeader() {
           >
             Privacy
           </Link>
-          <a
-            href="#waitlist"
-            className="px-4 py-2 rounded-full font-semibold text-[13px]"
-            style={{ background: "var(--bright-purple)", color: "white", boxShadow: "0 10px 28px rgba(122,92,255,0.28)" }}
-          >
-            Get on the waitlist
-          </a>
         </div>
       </div>
       <MotionProgressBar />
