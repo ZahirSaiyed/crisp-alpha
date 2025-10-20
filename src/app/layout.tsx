@@ -11,7 +11,8 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'Crisp',
+  metadataBase: new URL('https://crisp.up.railway.app'),
+  title: 'Crisp - Turn shaky moments into sharp delivery',
   description: 'Practice speaking with instant feedback and insights that help you sound as clear as you think. Perfect for interviews, presentations, and public speaking.',
   keywords: ['public speaking', 'interview prep', 'presentation skills', 'speech practice', 'communication'],
   authors: [{ name: 'Crisp' }],
@@ -27,10 +28,11 @@ export const metadata: Metadata = {
     description: 'Practice speaking with instant feedback and insights that help you sound as clear as you think. Perfect for interviews, presentations, and public speaking.',
     images: [
       {
-        url: 'https://crisp.up.railway.app/og-image.png',
+        url: '/og-image.png', // Changed to relative path - metadataBase will make it absolute
         width: 1200,
         height: 630,
         alt: 'Crisp - Practice speaking with instant feedback',
+        type: 'image/png',
       },
     ],
   },
@@ -38,7 +40,8 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Crisp - Turn shaky moments into sharp delivery',
     description: 'Practice speaking with instant feedback and insights that help you sound as clear as you think.',
-    images: ['https://crisp.up.railway.app/og-image.png'],
+    images: ['/og-image.png'], // Changed to relative path
+    creator: '@crisp',
   },
 }
 

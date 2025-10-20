@@ -18,8 +18,19 @@ const nextConfig: NextConfig = {
   // Security headers as fallback (middleware handles most cases)
   async headers() {
     return [
+      // Allow public assets (OG images, robots.txt, etc.) to be accessed without restrictions
       {
-        source: '/(.*)',
+        source: '/:path(og-image.png|robots.txt|favicon.ico|icon.svg)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      // Apply security headers to all other routes
+      {
+        source: '/((?!og-image.png|robots.txt|favicon.ico|icon.svg).*)',
         headers: [
           {
             key: 'X-Content-Type-Options',
@@ -27,11 +38,11 @@ const nextConfig: NextConfig = {
           },
           {
             key: 'X-Frame-Options',
-            value: 'DENY',
+            value: 'SAMEORIGIN', // Changed from DENY to SAMEORIGIN for better compatibility
           },
           {
             key: 'Referrer-Policy',
-            value: 'no-referrer',
+            value: 'strict-origin-when-cross-origin', // Changed to allow social media crawlers
           },
           {
             key: 'Content-Security-Policy',
