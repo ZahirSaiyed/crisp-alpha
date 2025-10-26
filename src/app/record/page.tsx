@@ -12,6 +12,9 @@ import { detectFillerCounts, detectPauses, WordToken } from "../../lib/analysis"
 import FeedbackTile from "../../components/FeedbackTile";
 import PracticeAnswerTile from "../../components/PracticeAnswerTile";
 import LoadingOverlay from "../../components/LoadingOverlay";
+import ProgressPreview from "../../components/ProgressPreview";
+import { buildSessionMetrics } from "../../lib/metrics";
+import { useAuth } from "../../contexts/AuthContext";
 import posthog from "posthog-js";
 
 type MetricsRemote = Comlink.Remote<import("../../workers/metrics.worker").MetricsWorker>;
@@ -84,6 +87,7 @@ function buildPrompts(persona: Persona): Prompt[] {
 }
 
 export default function RecordPage() {
+  const { user } = useAuth();
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [coreSummary, setCoreSummary] = useState<Partial<DeliverySummary> | null>(null);
   const [tokens, setTokens] = useState<Array<{ word: string; start?: number; end?: number }> | null>(null);
@@ -92,6 +96,7 @@ export default function RecordPage() {
   const [durationSec, setDurationSec] = useState<number | null>(null);
   const [selectedPrompt, setSelectedPrompt] = useState<Prompt | null>(null);
   const [persona, setPersona] = useState<Persona>("jobSeeker");
+  const [anonId, setAnonId] = useState<string | null>(null);
   const workerRef = useRef<Worker | null>(null);
   const metricsApiRef = useRef<MetricsRemote | null>(null);
   const lastUrlRef = useRef<string | null>(null);
@@ -105,6 +110,19 @@ export default function RecordPage() {
   useEffect(() => {
     setSelectedPrompt(personaPrompts[0] ?? null);
   }, [personaPrompts]);
+
+  // Initialize or retrieve anonymous ID
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    let id = localStorage.getItem('crisp_anon_id');
+    if (!id) {
+      // Generate new UUID
+      id = crypto.randomUUID();
+      localStorage.setItem('crisp_anon_id', id);
+    }
+    setAnonId(id);
+  }, []);
 
   // Keyboard shortcuts for persona tabs: 1/2/3
   useEffect(() => {
@@ -215,6 +233,32 @@ export default function RecordPage() {
 
   const [aiCoach, setAiCoach] = useState<{ headline?: string | undefined; subtext?: string | undefined } | null>(null);
   const [aiPractice, setAiPractice] = useState<string | null>(null);
+  
+  // Handle session migration when user signs in
+  const handleSignIn = useCallback(async () => {
+    if (!anonId) return;
+    
+    try {
+      const response = await fetch('/api/sessions/migrate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ anon_id: anonId }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const migrated = data.migrated || 0;
+        if (migrated > 0) {
+          // Clear anon ID after migration
+          localStorage.removeItem('crisp_anon_id');
+          setAnonId(null);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to migrate sessions:', error);
+    }
+  }, [anonId]);
+  
   // Track external loading states only for side-effects (no render dependency)
 
   const words = useMemo(() => (Array.isArray(tokens) ? tokens : []), [tokens]);
@@ -279,6 +323,48 @@ export default function RecordPage() {
       });
     }
   }, [audioUrl, hasAnyMetrics, durationSec, tokens, persona, selectedPrompt]);
+
+  // Save session metrics when we have complete data
+  useEffect(() => {
+    if (!hasAnyMetrics || !durationSec || !tokens || tokens.length === 0) return;
+    if (!wpm || wpm === null) return;
+
+    // Build session metrics from calculated values
+    const sessionMetrics = buildSessionMetrics({
+      wpm: wpm,
+      fillerCount: fillers.total,
+      totalWords: tokens.length,
+      pauseCount: pauseEvents.length,
+      talkTimeSec: durationSec,
+    });
+
+    // Save to API (works for both anonymous and authenticated users)
+    async function saveSession() {
+      try {
+        const payload = user 
+          ? sessionMetrics // Authenticated users don't need anon_id
+          : { ...sessionMetrics, anon_id: anonId }; // Anonymous users include anon_id
+
+        const response = await fetch('/api/sessions/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        if (response.ok) {
+          await response.json();
+        } else {
+          const error = await response.json();
+          console.error('❌ Failed to save session:', response.status, error);
+        }
+      } catch (error) {
+        console.error('Failed to save session:', error);
+      }
+    }
+
+    saveSession();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasAnyMetrics, durationSec, tokens?.length, wpm, user, anonId]);
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-[#F9F9FB] to-white text-[color:var(--ink)]">
@@ -435,6 +521,9 @@ export default function RecordPage() {
               🔒 Your audio was securely processed and immediately discarded. Nothing is stored.
             </p>
           </div>
+
+          {/* Progress tracking teaser for anonymous users */}
+          <ProgressPreview onSignIn={handleSignIn} />
         </section>
       )}
     </main>
