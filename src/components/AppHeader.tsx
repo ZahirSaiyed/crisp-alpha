@@ -45,11 +45,9 @@ export default function AppHeader() {
       }}
     >
       <div className="mx-auto max-w-7xl px-6 h-full flex items-center gap-3">
-        <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.98 }}>
-          <Link href="/" className="display-wordmark text-[color:var(--bright-purple)] text-3xl sm:text-5xl font-semibold tracking-wide">
-            CRISP
-          </Link>
-        </motion.div>
+        <Link href="/" className="display-headline text-[color:var(--bright-purple)] text-3xl sm:text-4xl lg:text-5xl font-extrabold drop-shadow-[0_4px_16px_rgba(122,92,255,0.25)] tracking-[-0.01em]">
+          Crisp
+        </Link>
         <div className="ml-auto flex items-center gap-4">
           {user && (
             <Link
@@ -61,10 +59,21 @@ export default function AppHeader() {
           )}
           <Link
             href="/privacy"
-            className="text-sm text-[color:rgba(11,11,12,0.6)] hover:text-[color:var(--ink)] transition-colors hidden sm:block"
+            className="flex items-center gap-1.5 text-sm text-[color:rgba(11,11,12,0.6)] hover:text-[color:var(--ink)] transition-colors hidden sm:flex"
           >
-            Privacy
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+            </svg>
+            <span>Privacy</span>
           </Link>
+          {!user && (
+            <Link
+              href="/signup"
+              className="px-4 py-2 rounded-full bg-gradient-to-r from-[color:var(--bright-purple)] to-[color:#9D7FFF] text-white text-sm font-semibold shadow-[0_4px_12px_rgba(122,92,255,0.25)] hover:shadow-[0_6px_20px_rgba(122,92,255,0.35)] transition-all duration-200 transform hover:scale-105"
+            >
+              Sign up
+            </Link>
+          )}
           {user && (
             <div className="relative">
               <button
@@ -92,26 +101,6 @@ export default function AppHeader() {
           )}
         </div>
       </div>
-      <MotionProgressBar />
     </motion.header>
-  );
-}
-
-function MotionProgressBar() {
-  const { scrollYProgress } = useScroll();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  return (
-    <motion.div
-      className="absolute left-0 right-0 top-full h-[3px] origin-left"
-      style={{ 
-        scaleX: mounted ? scrollYProgress : 0, 
-        background: "linear-gradient(90deg, var(--bright-lime), var(--bright-purple))" 
-      }}
-    />
   );
 } 
