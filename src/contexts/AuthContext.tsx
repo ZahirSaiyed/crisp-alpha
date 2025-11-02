@@ -46,10 +46,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
+    // Always prefer window.location.origin (actual current domain) unless NEXT_PUBLIC_BASE_URL
+    // is explicitly set and doesn't contain localhost (production safety check)
+    const envBaseUrl = process.env.NEXT_PUBLIC_BASE_URL
+    const baseUrl = (envBaseUrl && !envBaseUrl.includes('localhost')) 
+      ? envBaseUrl 
+      : window.location.origin
+    const redirectUrl = `${baseUrl}/auth/callback`
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: redirectUrl,
       },
     })
 

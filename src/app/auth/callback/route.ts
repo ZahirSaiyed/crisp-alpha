@@ -5,13 +5,18 @@ import { cookies } from 'next/headers'
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
-  const origin = requestUrl.origin
+  // Use request origin as it's always correct (the actual domain the request came from)
+  // Only use NEXT_PUBLIC_BASE_URL if it's explicitly set and doesn't contain localhost (production safety)
+  const envBaseUrl = process.env.NEXT_PUBLIC_BASE_URL
+  const baseUrl = (envBaseUrl && !envBaseUrl.includes('localhost')) 
+    ? envBaseUrl 
+    : requestUrl.origin
 
   if (code) {
     const cookieStore = await cookies()
     
     // Create a response object to set cookies on
-    const response = NextResponse.redirect(`${origin}/dashboard`)
+    const response = NextResponse.redirect(`${baseUrl}/dashboard`)
     
     // Create Supabase client with proper cookie handling
     const supabase = createServerClient(
@@ -36,13 +41,13 @@ export async function GET(request: Request) {
 
     if (error) {
       console.error('❌ Auth callback error:', error)
-      return NextResponse.redirect(`${origin}/?error=auth_failed`)
+      return NextResponse.redirect(`${baseUrl}/?error=auth_failed`)
     }
 
     return response
   }
 
   // No code provided, redirect to home
-  return NextResponse.redirect(`${origin}/`)
+  return NextResponse.redirect(`${baseUrl}/`)
 }
 
