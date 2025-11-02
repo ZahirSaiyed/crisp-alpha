@@ -21,7 +21,7 @@ export default function Page() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-[#F9F9FB] via-white to-[#F7F4EF] text-[color:var(--ink)] overflow-hidden">
       {/* Hero Section */}
-      <section ref={heroRef} className="relative pt-20 pb-24 sm:pt-28 sm:pb-32 lg:pt-36 lg:pb-40 xl:pt-40 xl:pb-44 overflow-hidden">
+      <section ref={heroRef} className="relative pt-16 pb-20 sm:pt-28 sm:pb-32 lg:pt-36 lg:pb-40 xl:pt-40 xl:pb-44 overflow-hidden">
         {/* Breathing gradient background - edge to edge */}
         <motion.div 
           className="absolute inset-0 w-screen overflow-hidden pointer-events-none"
@@ -31,15 +31,15 @@ export default function Page() {
           <div className="hero-gradient-warmth" />
         </motion.div>
         
-        <div className="relative z-10 text-center mx-auto max-w-4xl px-6">
+        <div className="relative z-10 text-center mx-auto max-w-4xl px-4 sm:px-6">
           {/* Opening: Crisp. Built for the human voice in an AI world. */}
           <motion.div
-            className="relative z-10 mb-4 sm:mb-6"
+            className="relative z-10 mb-3 sm:mb-6"
             initial={{ opacity: 0, y: 20 }}
             animate={isHeroInView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.8, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
           >
-            <h1 className="display-headline text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-extrabold text-[color:#0B0B0C] leading-[1.1] tracking-[-0.02em] mb-2 relative">
+            <h1 className="display-headline text-2xl sm:text-4xl lg:text-5xl xl:text-6xl font-extrabold text-[color:#0B0B0C] leading-[1.15] sm:leading-[1.1] tracking-[-0.02em] mb-2 relative px-1">
               <span className="text-[color:var(--bright-purple)] drop-shadow-[0_4px_16px_rgba(122,92,255,0.25)]">Crisp.</span>{" "}
               <span className="font-normal text-[color:#0B0B0C]">Built for the human voice in an AI world.</span>
             </h1>
@@ -47,7 +47,7 @@ export default function Page() {
 
           {/* Main value proposition */}
           <motion.p
-            className="text-xl sm:text-2xl lg:text-3xl font-medium text-[color:#0B0B0C] max-w-3xl mx-auto leading-relaxed mb-8 sm:mb-10 relative z-10"
+            className="text-lg sm:text-2xl lg:text-3xl font-medium text-[color:#0B0B0C] max-w-3xl mx-auto leading-[1.4] sm:leading-relaxed mb-6 sm:mb-10 relative z-10 px-1"
             initial={{ opacity: 0, y: 20 }}
             animate={isHeroInView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.8, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
@@ -57,7 +57,7 @@ export default function Page() {
 
           {/* CTA with trust builders */}
           <motion.div
-            className="flex flex-col items-center gap-2 relative z-10 mb-12 sm:mb-16"
+            className="flex flex-col items-center gap-2 relative z-10 mb-8 sm:mb-16"
             initial={{ opacity: 0, y: 20 }}
             animate={isHeroInView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.8, delay: 0.5, ease: [0.22, 1, 0.36, 1] }}
@@ -72,7 +72,7 @@ export default function Page() {
 
           {/* Optional micro detail - fades in after */}
           <motion.p
-            className="text-sm sm:text-base text-[color:rgba(11,11,12,0.6)] max-w-xl mx-auto mt-8 sm:mt-10 relative z-10 italic"
+            className="text-xs sm:text-base text-[color:rgba(11,11,12,0.6)] max-w-xl mx-auto mt-6 sm:mt-10 relative z-10 italic px-2"
             initial={{ opacity: 0, y: 10 }}
             animate={isHeroInView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 1.2, delay: 2, ease: [0.22, 1, 0.36, 1] }}
@@ -83,8 +83,8 @@ export default function Page() {
       </section>
 
       {/* Features Grid Section */}
-      <section ref={featuresRef} className="relative mx-auto max-w-7xl px-6 py-16 sm:py-20 lg:py-28">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 lg:gap-10">
+      <section ref={featuresRef} className="relative mx-auto max-w-7xl px-4 sm:px-6 py-12 sm:py-20 lg:py-28">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-8 lg:gap-10">
           {/* Memory Feature */}
           <motion.div
             className="feature-card feature-card-memory group"
@@ -136,9 +136,9 @@ export default function Page() {
       </section>
 
       {/* Final CTA Section */}
-      <section className="relative mx-auto max-w-7xl px-6 py-12 sm:py-16 lg:py-20">
+      <section className="relative mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-16 lg:py-20">
         <div className="text-center max-w-2xl mx-auto">
-          <h2 className="display-headline text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-extrabold text-[color:var(--ink)] mb-5 sm:mb-6 tracking-[-0.01em]">
+          <h2 className="display-headline text-xl sm:text-3xl lg:text-4xl xl:text-5xl font-extrabold text-[color:var(--ink)] mb-4 sm:mb-6 tracking-[-0.01em]">
             Ready to sound your best?
           </h2>
           <Link
