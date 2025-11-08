@@ -20,7 +20,7 @@ export default function AppHeader() {
   return (
     <div className="w-full pt-4 sm:pt-6 pb-4 sm:pb-6">
       <header
-        className="mx-auto max-w-5xl px-6 sm:px-8 rounded-full backdrop-blur-[12px] border border-[color:var(--muted-2)]/50 bg-white/95"
+        className="mx-auto w-full max-w-[95%] sm:max-w-2xl md:max-w-4xl lg:max-w-5xl px-4 sm:px-6 md:px-8 rounded-full backdrop-blur-[12px] border border-[color:var(--muted-2)]/50 bg-white/95"
       >
         <div className="h-14 sm:h-16 flex items-center gap-6 sm:gap-8">
         <Link href="/" className="flex items-center">

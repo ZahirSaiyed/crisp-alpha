@@ -140,7 +140,7 @@ function StepCard({ step }: { step: Step }) {
 
 export default function PhilosophyBlock() {
   const ref = useRef<HTMLElement>(null);
-  const isInView = useInView(ref, { once: false, margin: "-200px" });
+  const isInView = useInView(ref, { once: false, margin: "-50px" });
 
   return (
     <section ref={ref} className="relative mx-auto max-w-5xl px-4 sm:px-6 py-20 sm:py-28">
@@ -154,20 +154,20 @@ export default function PhilosophyBlock() {
         {/* Header */}
         <div className="text-center mb-6">
           <motion.h2
-            initial={{ opacity: 0, y: 20 }}
-            animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+            initial={{ opacity: 1, y: 0 }}
+            animate={isInView ? { opacity: 1, y: 0 } : { opacity: 1, y: 0 }}
             transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-            className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[color:var(--ink)] leading-tight mb-3"
+            className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-[color:var(--ink)] leading-tight mb-3 px-4"
             style={{ fontFamily: 'var(--font-playfair), Georgia, serif' }}
           >
             How Crisp Works
           </motion.h2>
           
           <motion.p
-            initial={{ opacity: 0, y: 10 }}
-            animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
+            initial={{ opacity: 1, y: 0 }}
+            animate={isInView ? { opacity: 1, y: 0 } : { opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-            className="text-lg sm:text-xl text-[color:rgba(11,11,12,0.7)] max-w-2xl mx-auto leading-relaxed font-medium"
+            className="text-base sm:text-lg md:text-xl text-[color:rgba(11,11,12,0.7)] max-w-2xl mx-auto leading-relaxed font-medium px-4"
           >
             You bring the moment. Crisp helps you get ready for it.
           </motion.p>
