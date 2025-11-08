@@ -185,7 +185,7 @@ export default function DashboardPage() {
             <div className="text-center">
               <button
                 onClick={() => router.push('/record')}
-                className="px-6 py-3 rounded-full bg-gradient-to-r from-[color:var(--bright-purple)] to-[color:#9D7FFF] text-white font-semibold shadow-[0_4px_12px_rgba(122,92,255,0.25)] hover:shadow-[0_6px_20px_rgba(122,92,255,0.35)] transition-all duration-200 transform hover:scale-105"
+                className="px-8 py-4 rounded-full bg-[color:var(--intent-persuasive)] text-white font-semibold text-base shadow-[0_4px_12px_rgba(124,58,237,0.35)] hover:shadow-[0_6px_20px_rgba(124,58,237,0.45)] transition-all duration-200 transform hover:scale-105"
               >
                 Record Another Session
               </button>

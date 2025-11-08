@@ -104,8 +104,8 @@ function SwipeCard({ prompt, isRecording, index, total, onSwipeLeft, onSwipeRigh
     <m.div
       className="mx-auto w-full"
       initial={{ opacity: 0, y: 4, x: enterDir === "right" ? 56 : -56, rotate: enterDir === "right" ? 2.5 : -2.5 }}
-      animate={{ opacity: 1, y: 0, x: 0, rotate: 0, transition: { type: "spring", stiffness: 520, damping: 20 } }}
-      exit={{ opacity: 0, y: -4, x: exitDir === "right" ? -56 : 56, rotate: exitDir === "right" ? -2.5 : 2.5, transition: { duration: 0.12 } }}
+      animate={{ opacity: 1, y: 0, x: 0, rotate: 0, transition: { duration: 0.25, ease: [0.22, 1, 0.36, 1] } }}
+      exit={{ opacity: 0, y: -4, x: exitDir === "right" ? -56 : 56, rotate: exitDir === "right" ? -2.5 : 2.5, transition: { duration: 0.2 } }}
     >
       <m.div
         layoutId="promptCard"
@@ -115,8 +115,7 @@ function SwipeCard({ prompt, isRecording, index, total, onSwipeLeft, onSwipeRigh
         dragConstraints={{ left: 0, right: 0 }}
         dragElastic={0.16}
         dragMomentum
-        whileHover={{ y: -1, scale: 1.005 }}
-        whileTap={{ scale: 0.99 }}
+        whileHover={{ y: -1 }}
         onDragEnd={(e, info) => {
           const offset = info.offset.x;
           const velocity = info.velocity.x;
@@ -129,8 +128,8 @@ function SwipeCard({ prompt, isRecording, index, total, onSwipeLeft, onSwipeRigh
       >
         {/* Header row: goal chip (category) and recording indicator */}
         <div className="flex items-start gap-3 mb-4">
-          <span className="inline-flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-full bg-transparent text-[color:var(--bright-purple)] border border-[color:var(--bright-purple)]/30 font-medium tracking-wide">{(prompt.category || "").toUpperCase() || "PROMPT"}</span>
-          <div className="w-8 h-8 rounded-full bg-[color:var(--muted-1)] border border-[color:var(--muted-2)] flex items-center justify-center shadow-[inset_0_0_0_2px_rgba(122,92,255,0.12)]">{prompt.icon || "🎯"}</div>
+          <span className="inline-flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-full bg-transparent text-[color:var(--intent-persuasive)] border border-[color:var(--intent-persuasive)]/30 font-medium tracking-wide">{(prompt.category || "").toUpperCase() || "PROMPT"}</span>
+          <div className="w-8 h-8 rounded-full bg-[color:var(--muted-1)] border border-[color:var(--muted-2)] flex items-center justify-center">{prompt.icon || "🎯"}</div>
           {/* Recording indicator handled by Recorder UI */}
         </div>
 
@@ -144,9 +143,9 @@ function SwipeCard({ prompt, isRecording, index, total, onSwipeLeft, onSwipeRigh
 
         {/* Navigation row */}
         <div className="mt-5 flex items-center justify-center gap-1.5">
-          <button type="button" aria-label="Previous" className="h-8 w-8 rounded-full border border-[color:var(--muted-2)] hover:bg-[color:var(--muted-1)] hover:border-[color:var(--bright-purple)]/30 hover:shadow-[0_2px_8px_rgba(122,92,255,0.1)] transition-all duration-200 transform hover:scale-105" onClick={onPrev}>◀︎</button>
-          <span className="text-xs text-[color:var(--bright-purple)] px-3 font-medium">{index + 1}/{total}</span>
-          <button type="button" aria-label="Next" className="h-8 w-8 rounded-full border border-[color:var(--muted-2)] hover:bg-[color:var(--muted-1)] hover:border-[color:var(--bright-purple)]/30 hover:shadow-[0_2px_8px_rgba(122,92,255,0.1)] transition-all duration-200 transform hover:scale-105" onClick={onNext}>▶︎</button>
+          <button type="button" aria-label="Previous" className="h-8 w-8 rounded-full border border-[color:var(--muted-2)] hover:bg-[color:var(--muted-1)] hover:border-[color:var(--intent-persuasive)]/30 hover:shadow-[0_2px_8px_rgba(124,58,237,0.1)] transition-all duration-200" onClick={onPrev}>◀︎</button>
+          <span className="text-xs text-[color:var(--intent-persuasive)] px-3 font-medium">{index + 1}/{total}</span>
+          <button type="button" aria-label="Next" className="h-8 w-8 rounded-full border border-[color:var(--muted-2)] hover:bg-[color:var(--muted-1)] hover:border-[color:var(--intent-persuasive)]/30 hover:shadow-[0_2px_8px_rgba(124,58,237,0.1)] transition-all duration-200" onClick={onNext}>▶︎</button>
         </div>
       </m.div>
     </m.div>

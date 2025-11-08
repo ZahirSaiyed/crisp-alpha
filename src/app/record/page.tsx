@@ -78,6 +78,57 @@ export default function RecordPage() {
     setAnonId(id);
   }, []);
 
+  // Check for URL params and use stored prompts or generate if coming from landing page
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (scenario || intent || generatedPrompts.length > 0 || isGeneratingPrompts) return; // Already have data or generating
+    
+    const searchParams = new URLSearchParams(window.location.search);
+    const scenarioParam = searchParams.get('scenario');
+    const intentParam = searchParams.get('intent') as Intent | null;
+    
+    if (scenarioParam && intentParam && ['decisive', 'natural', 'calm', 'persuasive', 'empathetic'].includes(intentParam)) {
+      // Check if prompts were already generated on landing page
+      const storedPrompts = sessionStorage.getItem('crisp_generated_prompts');
+      const storedSource = sessionStorage.getItem('crisp_prompt_source');
+      
+      if (storedPrompts) {
+        try {
+          const prompts = JSON.parse(storedPrompts);
+          if (Array.isArray(prompts) && prompts.length > 0) {
+            setScenario(scenarioParam);
+            setIntent(intentParam);
+            setGeneratedPrompts(prompts);
+            
+            posthog.capture('prompt_generation_success', {
+              source: storedSource || 'unknown',
+              scenario_length: scenarioParam.length,
+              intent: intentParam,
+              from_storage: true,
+            });
+            
+            // Clean up storage and URL params
+            sessionStorage.removeItem('crisp_generated_prompts');
+            sessionStorage.removeItem('crisp_prompt_source');
+            const newUrl = window.location.pathname;
+            window.history.replaceState({}, '', newUrl);
+            return;
+          }
+        } catch (error) {
+          console.error('Failed to parse stored prompts:', error);
+        }
+      }
+      
+      // If no stored prompts, generate them
+      handleGeneratePrompts(scenarioParam, intentParam);
+      
+      // Clean up URL params
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
+
   // Generate idempotency key
   const generateIdempotencyKey = useCallback(async (scenario: string, intent: Intent) => {
     const text = `${scenario}:${intent}`;

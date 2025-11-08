@@ -15,38 +15,38 @@ export interface IntentTheme {
 
 const INTENT_THEMES: Record<Intent, IntentTheme> = {
   decisive: {
-    primary: "#DC2626", // red-600
-    secondary: "#EF4444", // red-500
-    accent: "#FEE2E2", // red-100
-    bgTint: "rgba(220, 38, 38, 0.05)",
+    primary: "#F59E0B", // Amber
+    secondary: "#FBBF24", // amber-400
+    accent: "#FEF3C7", // amber-100
+    bgTint: "rgba(245, 158, 11, 0.05)",
     label: "Decisive",
   },
   natural: {
-    primary: "#059669", // emerald-600
-    secondary: "#10B981", // emerald-500
-    accent: "#D1FAE5", // emerald-100
-    bgTint: "rgba(5, 150, 105, 0.05)",
+    primary: "#0EA5E9", // Sky
+    secondary: "#38BDF8", // sky-400
+    accent: "#E0F2FE", // sky-100
+    bgTint: "rgba(14, 165, 233, 0.05)",
     label: "Natural",
   },
   calm: {
-    primary: "#0284C7", // sky-600
-    secondary: "#0EA5E9", // sky-500
-    accent: "#E0F2FE", // sky-100
-    bgTint: "rgba(2, 132, 199, 0.05)",
+    primary: "#10B981", // Sage/Green
+    secondary: "#34D399", // emerald-400
+    accent: "#D1FAE5", // emerald-100
+    bgTint: "rgba(16, 185, 129, 0.05)",
     label: "Calm",
   },
   persuasive: {
-    primary: "#7C3AED", // violet-600
+    primary: "#7C3AED", // Violet
     secondary: "#8B5CF6", // violet-500
     accent: "#EDE9FE", // violet-100
     bgTint: "rgba(124, 58, 237, 0.05)",
     label: "Persuasive",
   },
   empathetic: {
-    primary: "#DB2777", // pink-600
-    secondary: "#EC4899", // pink-500
-    accent: "#FCE7F3", // pink-100
-    bgTint: "rgba(219, 39, 119, 0.05)",
+    primary: "#FB7185", // Coral
+    secondary: "#FCA5A5", // rose-300
+    accent: "#FCE7F3", // rose-100
+    bgTint: "rgba(251, 113, 133, 0.05)",
     label: "Empathetic",
   },
 };

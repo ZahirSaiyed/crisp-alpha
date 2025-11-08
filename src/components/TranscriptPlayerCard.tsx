@@ -165,7 +165,7 @@ export default function TranscriptPlayerCard({ src, tokens, paragraphs, transcri
 
       <div className="mt-5">
         <div className="flex items-center gap-3">
-          <button type="button" onClick={() => (audioRef.current?.paused ? audioRef.current?.play() : audioRef.current?.pause())} className="w-12 h-12 rounded-full flex items-center justify-center shadow-[0_8px_18px_rgba(122,92,255,0.28)] transition-transform duration-150 ease-out hover:scale-[1.03] active:scale-[0.97]" style={{ background: "var(--bright-purple)", color: "white" }}>
+          <button type="button" onClick={() => (audioRef.current?.paused ? audioRef.current?.play() : audioRef.current?.pause())} className="w-12 h-12 rounded-full flex items-center justify-center shadow-[0_8px_18px_rgba(124,58,237,0.35)] transition-transform duration-150 ease-out hover:scale-[1.03] active:scale-[0.97]" style={{ background: "var(--intent-persuasive)", color: "white" }}>
             {playing ? (
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="6" y="4" width="4" height="16" fill="white"/><rect x="14" y="4" width="4" height="16" fill="white"/></svg>
             ) : (

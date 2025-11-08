@@ -1,26 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { motion, useScroll, useTransform, useMotionTemplate } from "framer-motion";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function AppHeader() {
-  const [mounted, setMounted] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const { user, signOut } = useAuth();
-  const { scrollY } = useScroll();
-  const bgOpacity = useTransform(scrollY, [0, 200], [0.7, 0.9]);
-  const bg = useMotionTemplate`rgba(255,255,255,${bgOpacity})`;
-  const shadow = useTransform(scrollY, [0, 80], [
-    "0 10px 30px rgba(0,0,0,0)",
-    "0 10px 30px rgba(0,0,0,0.08)",
-  ]);
-  const height = useTransform(scrollY, [0, 200], [72, 60]);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const handleSignOut = async () => {
     try {
@@ -32,27 +18,21 @@ export default function AppHeader() {
   };
 
   return (
-    <motion.header
-      className="sticky top-0 z-50 border-b border-[color:var(--muted-2)] backdrop-blur-[6px]"
-      style={mounted ? {
-        backgroundColor: bg,
-        boxShadow: shadow,
-        height,
-      } : {
-        backgroundColor: 'rgba(255,255,255,0.7)',
-        boxShadow: '0 10px 30px rgba(0,0,0,0)',
-        height: 72,
-      }}
-    >
-      <div className="mx-auto max-w-7xl px-6 h-full flex items-center gap-3">
-        <Link href="/" className="display-headline text-[color:var(--bright-purple)] text-3xl sm:text-4xl lg:text-5xl font-extrabold drop-shadow-[0_4px_16px_rgba(122,92,255,0.25)] tracking-[-0.01em]">
-          Crisp
+    <div className="w-full pt-4 sm:pt-6 pb-4 sm:pb-6">
+      <header
+        className="mx-auto max-w-5xl px-6 sm:px-8 rounded-full backdrop-blur-[12px] border border-[color:var(--muted-2)]/50 bg-white/95"
+      >
+        <div className="h-14 sm:h-16 flex items-center gap-6 sm:gap-8">
+        <Link href="/" className="flex items-center">
+          <span className="display-headline text-[color:var(--intent-persuasive)] text-2xl sm:text-3xl lg:text-4xl font-extrabold drop-shadow-[0_4px_16px_rgba(124,58,237,0.25)] tracking-[-0.02em]">
+            Crisp
+          </span>
         </Link>
-        <div className="ml-auto flex items-center gap-4">
+        <div className="ml-auto flex items-center gap-5 sm:gap-6">
           {user && (
             <Link
               href="/dashboard"
-              className="text-sm font-medium text-[color:var(--bright-purple)] hover:text-[color:var(--ink)] transition-colors"
+              className="text-sm font-medium text-[color:var(--intent-persuasive)] hover:text-[color:var(--ink)] transition-colors"
             >
               Dashboard
             </Link>
@@ -69,7 +49,7 @@ export default function AppHeader() {
           {!user && (
             <Link
               href="/signup"
-              className="px-4 py-2 rounded-full bg-gradient-to-r from-[color:var(--bright-purple)] to-[color:#9D7FFF] text-white text-sm font-semibold shadow-[0_4px_12px_rgba(122,92,255,0.25)] hover:shadow-[0_6px_20px_rgba(122,92,255,0.35)] transition-all duration-200 transform hover:scale-105"
+              className="px-4 py-2 rounded-full bg-[color:var(--intent-persuasive)] text-white text-sm font-medium shadow-[0_4px_12px_rgba(124,58,237,0.25)] hover:shadow-[0_6px_20px_rgba(124,58,237,0.35)] transition-all duration-200"
             >
               Sign up
             </Link>
@@ -78,7 +58,7 @@ export default function AppHeader() {
             <div className="relative">
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="w-8 h-8 rounded-full bg-gradient-to-r from-[color:var(--bright-purple)] to-[color:#9D7FFF] flex items-center justify-center text-white text-sm font-semibold hover:shadow-[0_4px_12px_rgba(122,92,255,0.35)] transition-all"
+                className="w-8 h-8 rounded-full bg-[color:var(--intent-persuasive)] flex items-center justify-center text-white text-sm font-medium hover:shadow-[0_4px_12px_rgba(124,58,237,0.35)] transition-all duration-200"
                 aria-label="User menu"
               >
                 {user.email?.[0]?.toUpperCase() || 'U'}
@@ -100,7 +80,8 @@ export default function AppHeader() {
             </div>
           )}
         </div>
-      </div>
-    </motion.header>
+        </div>
+      </header>
+    </div>
   );
 } 
