@@ -199,7 +199,7 @@ export async function POST(req: NextRequest) {
         try {
           const result = await existing
           return ok(result, requestId)
-        } catch (error) {
+        } catch {
           // If existing request failed, continue with new request
           inFlightRequests.delete(idempotencyKey)
         }
@@ -223,7 +223,6 @@ export async function POST(req: NextRequest) {
 
       try {
         const promptText = buildGeminiPrompt(scenario, intent)
-        console.log('🤖 Calling Gemini with scenario:', scenario, 'intent:', intent)
         
         const ai = new GoogleGenAI({ apiKey: ENV.GEMINI_API_KEY })
         const result = await ai.models.generateContent({
@@ -234,8 +233,6 @@ export async function POST(req: NextRequest) {
         clearTimeout(timeoutId)
         
         const rawText = result.text || ''
-        console.log('📝 Gemini raw response length:', rawText.length, 'chars')
-        console.log('📝 Gemini raw response preview:', rawText.substring(0, 200))
         
         // Wrap JSON.parse in try/catch before Zod validation
         let parsedJson: unknown | null = null
@@ -245,12 +242,10 @@ export async function POST(req: NextRequest) {
           logError('JSON parse failed', { error: parseError, requestId, rawTextPreview: rawText.substring(0, 500) })
         }
 
-        const duration = Date.now() - startTime
-        logApiCall('Gemini', 'gemini-2.0-flash-exp', 200, duration, requestId)
+        logApiCall('Gemini', 'gemini-2.0-flash-exp', 200, Date.now() - startTime, requestId)
 
         if (parsedJson && typeof parsedJson === 'object') {
           const structuredData = parsedJson as Record<string, unknown>
-          console.log('✅ Parsed JSON structure:', Object.keys(structuredData))
           
           // Add source field to Gemini response
           const responseWithSource = {
@@ -261,15 +256,11 @@ export async function POST(req: NextRequest) {
           // Validate response with Zod
           const responseValidation = ScenarioResponseSchema.safeParse(responseWithSource)
           if (responseValidation.success) {
-            console.log('✅ Gemini prompts validated successfully:', responseValidation.data.prompts.length, 'prompts')
             return responseValidation.data
           } else {
-            console.error('❌ Response validation failed:', responseValidation.error.issues)
             logError('Response validation failed', { errors: responseValidation.error.issues, requestId, structuredData })
             // Fall through to fallback
           }
-        } else {
-          console.error('❌ Failed to parse JSON from Gemini response')
         }
 
         // Fall through to fallback if Gemini response invalid
@@ -293,7 +284,6 @@ export async function POST(req: NextRequest) {
       // Fallback: keyword detection → category → predefined prompts
       const category = detectCategoryFromScenario(scenario) || 'surprise' // Default to surprise if no match
       const fallbackPrompts = getFallbackPrompts(category as PromptCategory)
-      console.log('🔄 Using fallback prompts for category:', category, 'prompts:', fallbackPrompts.length)
 
       return {
         prompts: fallbackPrompts,
@@ -311,7 +301,6 @@ export async function POST(req: NextRequest) {
     }
 
     const result = await requestPromise
-    const duration = Date.now() - startTime
 
     // Validate final response
     const finalValidation = ScenarioResponseSchema.safeParse(result)

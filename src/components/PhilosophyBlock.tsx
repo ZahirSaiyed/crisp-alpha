@@ -3,7 +3,15 @@
 import React, { useRef } from "react";
 import { motion, useInView, useScroll, useTransform } from "framer-motion";
 
-const steps = [
+type Step = {
+  number: string;
+  label: string;
+  description: string;
+  icon: React.ReactNode;
+  color: string;
+};
+
+const steps: Step[] = [
   {
     number: "1",
     label: "Describe your moment",
@@ -47,13 +55,92 @@ const steps = [
   },
 ];
 
+function StepCard({ step }: { step: Step }) {
+  const stepRef = useRef<HTMLDivElement>(null);
+  const stepScrollProgress = useScroll({
+    target: stepRef,
+    offset: ["start end", "center center"]
+  }).scrollYProgress;
+  
+  const y = useTransform(stepScrollProgress, [0, 1], [50, 0]);
+  const opacity = useTransform(stepScrollProgress, [0, 0.3, 0.7, 1], [0, 0.5, 1, 1]);
+  const scale = useTransform(stepScrollProgress, [0, 0.5, 1], [0.9, 0.95, 1]);
+  const iconRotate = useTransform(stepScrollProgress, [0, 1], [-180, 0]);
+  const iconScale = useTransform(stepScrollProgress, [0, 0.5, 1], [0, 0.8, 1]);
+  const titleOpacity = useTransform(stepScrollProgress, [0.2, 0.5], [0, 1]);
+  const descOpacity = useTransform(stepScrollProgress, [0.4, 0.7], [0, 1]);
+  
+  return (
+    <motion.div
+      ref={stepRef}
+      style={{ 
+        y,
+        opacity,
+        scale,
+        willChange: 'transform, opacity'
+      }}
+      whileHover={{ 
+        y: -4,
+        transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] }
+      }}
+      className="flex flex-col items-center text-center cursor-default"
+    >
+      {/* Icon */}
+      <motion.div 
+        className="w-16 h-16 rounded-full flex items-center justify-center shadow-sm border mb-4"
+        style={{ 
+          background: step.color === "var(--intent-decisive)" 
+            ? "linear-gradient(to bottom right, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.05))"
+            : step.color === "var(--intent-natural)"
+            ? "linear-gradient(to bottom right, rgba(14, 165, 233, 0.15), rgba(14, 165, 233, 0.05))"
+            : "linear-gradient(to bottom right, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.05))",
+          borderColor: step.color === "var(--intent-decisive)"
+            ? "rgba(245, 158, 11, 0.2)"
+            : step.color === "var(--intent-natural)"
+            ? "rgba(14, 165, 233, 0.2)"
+            : "rgba(16, 185, 129, 0.2)",
+          willChange: 'transform',
+          rotate: iconRotate,
+          scale: iconScale
+        }}
+        whileHover={{ 
+          scale: 1.1,
+          rotate: 5,
+          transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] }
+        }}
+      >
+        {step.icon}
+      </motion.div>
+      
+      {/* Step number and label */}
+      <motion.div 
+        className="mb-3"
+        style={{
+          opacity: titleOpacity
+        }}
+      >
+        <span className="text-sm font-semibold text-[color:rgba(11,11,12,0.5)] mr-2">{step.number}.</span>
+        <h3 className="text-xl font-bold text-[color:var(--ink)] leading-tight inline">
+          {step.label}
+        </h3>
+      </motion.div>
+      
+      {/* Description */}
+      <motion.p 
+        className="text-base text-[color:rgba(11,11,12,0.7)] leading-relaxed font-normal max-w-[280px]"
+        style={{
+          opacity: descOpacity
+        }}
+      >
+        {step.description}
+      </motion.p>
+    </motion.div>
+  );
+}
+
 export default function PhilosophyBlock() {
   const ref = useRef<HTMLElement>(null);
   const isInView = useInView(ref, { once: false, margin: "-200px" });
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start end", "end start"]
-  });
 
   return (
     <section ref={ref} className="relative mx-auto max-w-5xl px-4 sm:px-6 py-20 sm:py-28">
@@ -88,86 +175,9 @@ export default function PhilosophyBlock() {
 
         {/* Steps */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 sm:gap-12 mt-16 sm:mt-20">
-          {steps.map((step, index) => {
-            const stepRef = useRef<HTMLDivElement>(null);
-            const stepInView = useInView(stepRef, { once: false, margin: "-150px" });
-            const stepScrollProgress = useScroll({
-              target: stepRef,
-              offset: ["start end", "center center"]
-            }).scrollYProgress;
-            
-            const y = useTransform(stepScrollProgress, [0, 1], [50, 0]);
-            const opacity = useTransform(stepScrollProgress, [0, 0.3, 0.7, 1], [0, 0.5, 1, 1]);
-            const scale = useTransform(stepScrollProgress, [0, 0.5, 1], [0.9, 0.95, 1]);
-            
-            return (
-              <motion.div
-                key={step.number}
-                ref={stepRef}
-                style={{ 
-                  y,
-                  opacity,
-                  scale,
-                  willChange: 'transform, opacity'
-                }}
-                whileHover={{ 
-                  y: -4,
-                  transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] }
-                }}
-                className="flex flex-col items-center text-center cursor-default"
-              >
-                {/* Icon */}
-                <motion.div 
-                  className="w-16 h-16 rounded-full flex items-center justify-center shadow-sm border mb-4"
-                  style={{ 
-                    background: step.color === "var(--intent-decisive)" 
-                      ? "linear-gradient(to bottom right, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.05))"
-                      : step.color === "var(--intent-natural)"
-                      ? "linear-gradient(to bottom right, rgba(14, 165, 233, 0.15), rgba(14, 165, 233, 0.05))"
-                      : "linear-gradient(to bottom right, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.05))",
-                    borderColor: step.color === "var(--intent-decisive)"
-                      ? "rgba(245, 158, 11, 0.2)"
-                      : step.color === "var(--intent-natural)"
-                      ? "rgba(14, 165, 233, 0.2)"
-                      : "rgba(16, 185, 129, 0.2)",
-                    willChange: 'transform',
-                    rotate: useTransform(stepScrollProgress, [0, 1], [-180, 0]),
-                    scale: useTransform(stepScrollProgress, [0, 0.5, 1], [0, 0.8, 1])
-                  }}
-                  whileHover={{ 
-                    scale: 1.1,
-                    rotate: 5,
-                    transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] }
-                  }}
-                >
-                  {step.icon}
-                </motion.div>
-                
-                {/* Step number and label */}
-                <motion.div 
-                  className="mb-3"
-                  style={{
-                    opacity: useTransform(stepScrollProgress, [0.2, 0.5], [0, 1])
-                  }}
-                >
-                  <span className="text-sm font-semibold text-[color:rgba(11,11,12,0.5)] mr-2">{step.number}.</span>
-                  <h3 className="text-xl font-bold text-[color:var(--ink)] leading-tight inline">
-                    {step.label}
-                  </h3>
-                </motion.div>
-                
-                {/* Description */}
-                <motion.p 
-                  className="text-base text-[color:rgba(11,11,12,0.7)] leading-relaxed font-normal max-w-[280px]"
-                  style={{
-                    opacity: useTransform(stepScrollProgress, [0.4, 0.7], [0, 1])
-                  }}
-                >
-                  {step.description}
-                </motion.p>
-              </motion.div>
-            );
-          })}
+          {steps.map((step) => (
+            <StepCard key={step.number} step={step} />
+          ))}
         </div>
 
         {/* Supporting line */}

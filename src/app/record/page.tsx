@@ -163,7 +163,6 @@ export default function RecordPage() {
       }
 
       const data = await response.json();
-      console.log('📦 API Response:', data);
       
       if (data.data && Array.isArray(data.data.prompts) && data.data.prompts.length > 0) {
         setGeneratedPrompts(data.data.prompts);
@@ -172,9 +171,7 @@ export default function RecordPage() {
           scenario_length: scenarioText.length,
           intent: intentValue,
         });
-        console.log('✅ Prompts generated:', data.data.prompts);
       } else {
-        console.error('❌ Invalid response format:', data);
         throw new Error('Invalid response format');
       }
     } catch (error) {
@@ -196,7 +193,6 @@ export default function RecordPage() {
           const fallbackData = await fallbackResponse.json();
           if (fallbackData.data && Array.isArray(fallbackData.data.prompts)) {
             setGeneratedPrompts(fallbackData.data.prompts);
-            console.log('✅ Fallback prompts loaded:', fallbackData.data.prompts);
             posthog.capture('prompt_generation_fallback', {
               scenario_length: scenarioText.length,
               intent: intentValue,
