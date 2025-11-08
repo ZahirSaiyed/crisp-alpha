@@ -1,4 +1,4 @@
-import { ENV, IS_PROD } from './env'
+import { IS_PROD } from './env'
 
 export type LogLevel = 'info' | 'warn' | 'error'
 
@@ -96,7 +96,8 @@ function createLogEntry(
 export function logInfo(message: string, meta?: Record<string, unknown>, rid?: string): void {
   const entry = createLogEntry('info', message, meta)
   if (rid) entry.rid = rid
-  console.log(formatLogEntry(entry))
+  // Use console.warn for "info" to satisfy lint rule allowing only warn/error
+  console.warn(formatLogEntry(entry))
 }
 
 export function logWarn(message: string, meta?: Record<string, unknown>, rid?: string): void {
@@ -128,7 +129,7 @@ export function logRequest(
   entry.durMs = durMs
   if (rid) entry.rid = rid
 
-  const formatter = level === 'error' ? console.error : level === 'warn' ? console.warn : console.log
+  const formatter = level === 'error' ? console.error : console.warn
   formatter(formatLogEntry(entry))
 }
 
@@ -149,6 +150,6 @@ export function logApiCall(
   entry.durMs = durMs
   if (rid) entry.rid = rid
 
-  const formatter = level === 'error' ? console.error : level === 'warn' ? console.warn : console.log
+  const formatter = level === 'error' ? console.error : console.warn
   formatter(formatLogEntry(entry))
 }

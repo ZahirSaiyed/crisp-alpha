@@ -46,6 +46,7 @@ function parseSections(text: string): Sections | null {
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
+    if (!line) continue;
     const maybe = normalizeHeading(line);
     if (maybe) {
       current = maybe;
@@ -175,9 +176,15 @@ export default function FeedbackTile({
             strengths: Array.isArray((data as Record<string, unknown>).strengths) ? (data as Record<string, unknown>).strengths as string[] : [],
             weaknesses: Array.isArray((data as Record<string, unknown>).weaknesses) ? (data as Record<string, unknown>).weaknesses as string[] : [],
             recommendations: Array.isArray((data as Record<string, unknown>).recommendations) ? (data as Record<string, unknown>).recommendations as string[] : [],
-            coachInsight: (data as Record<string, unknown>).coachInsight as Structured["coachInsight"] | undefined,
-            improvedAnswer: typeof (data as Record<string, unknown>).improvedAnswer === "string" ? (data as Record<string, unknown>).improvedAnswer as string : undefined,
           };
+          const coachInsight = (data as Record<string, unknown>).coachInsight;
+          if (coachInsight && typeof coachInsight === "object") {
+            s.coachInsight = coachInsight as NonNullable<Structured["coachInsight"]>;
+          }
+          const improvedAnswer = (data as Record<string, unknown>).improvedAnswer;
+          if (typeof improvedAnswer === "string") {
+            s.improvedAnswer = improvedAnswer;
+          }
           setJson(s);
           onStructuredRef.current?.(s);
         } else {
@@ -206,8 +213,7 @@ export default function FeedbackTile({
   return (
     <section className="relative rounded-[20px] shadow-[0_12px_40px_rgba(0,0,0,0.06)] bg-white/90 backdrop-blur border border-[color:var(--muted-2)] p-5 sm:p-6">
       <div className="flex items-center justify-between mb-2">
-        <div className="text-[11px] uppercase tracking-[0.08em] text-[color:rgba(11,11,12,0.55)]">Expert Feedback</div>
-        <span className="text-[10px] px-2 py-0.5 rounded-full border border-[color:var(--muted-2)] text-[color:rgba(11,11,12,0.55)]">Auto‑generated</span>
+        <div className="text-[11px] uppercase tracking-[0.08em] text-[color:var(--bright-purple)] font-medium">Expert Feedback</div>
       </div>
 
       {loading && (

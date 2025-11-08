@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Gauge from "./Gauge";
 import { AnimatePresence, motion } from "framer-motion";
+import posthog from "posthog-js";
 
 type EnergyAnalysis = {
   variability: number | null;
@@ -41,11 +42,11 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
   const [transcriptionError, setTranscriptionError] = useState<string | null>(null);
   const [audioDurationSec, setAudioDurationSec] = useState<number | null>(null);
   const [dgWords, setDgWords] = useState<Array<{ word: string; start?: number; end?: number; confidence?: number }> | null>(null);
-  const [dgParagraphs, setDgParagraphs] = useState<Array<{ text: string; start?: number; end?: number }> | null>(null);
-  const [isAnalyzingEnergy, setIsAnalyzingEnergy] = useState<boolean>(false);
-  const [energyError, setEnergyError] = useState<string | null>(null);
+  const [, setDgParagraphs] = useState<Array<{ text: string; start?: number; end?: number }> | null>(null);
+  const [, setIsAnalyzingEnergy] = useState<boolean>(false);
+  const [, setEnergyError] = useState<string | null>(null);
   const [energy, setEnergy] = useState<EnergyAnalysis | null>(null);
-  const [isFixtureResponse, setIsFixtureResponse] = useState<boolean>(false);
+  const [, setIsFixtureResponse] = useState<boolean>(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -71,10 +72,18 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
     onBlobUrlChange?.(blobUrl, currentBlob);
   }, [blobUrl, currentBlob, onBlobUrlChange]);
 
+  // Stable event handlers via refs to avoid effect deps on changing functions
+  const startRecordingRef = useRef(startRecording);
+  const stopRecordingRef = useRef(stopRecording);
+  useEffect(() => {
+    startRecordingRef.current = startRecording;
+    stopRecordingRef.current = stopRecording;
+  });
+
   useEffect(() => {
     // Allow external trigger to begin/stop recording
-    function onBegin() { startRecording(); }
-    function onStop() { stopRecording(); }
+    function onBegin() { startRecordingRef.current?.(); }
+    function onStop() { stopRecordingRef.current?.(); }
     window.addEventListener("app:begin-recording", onBegin as EventListener);
     window.addEventListener("app:stop-recording", onStop as EventListener);
     return () => {
@@ -172,25 +181,29 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
       setTranscript((data as Record<string, unknown>).transcript as string);
       if (Array.isArray((data as Record<string, unknown>).words)) {
         setDgWords(
-          (data as Record<string, unknown>).words.map((w: unknown) => {
-            const obj = (w ?? {}) as Record<string, unknown>;
-            const wordVal = typeof obj.word === "string" ? obj.word : String(obj.word ?? "");
-            const startVal = typeof obj.start === "number" ? obj.start : undefined;
-            const endVal = typeof obj.end === "number" ? obj.end : undefined;
-            const confVal = typeof obj.confidence === "number" ? obj.confidence : undefined;
-            return { word: wordVal, start: startVal, end: endVal, confidence: confVal };
+          ((data as Record<string, unknown>).words as unknown[]).map((w: unknown) => {
+            const src = (w ?? {}) as Record<string, unknown>;
+            const out: { word: string; start?: number; end?: number; confidence?: number } = {
+              word: typeof src.word === "string" ? src.word : String(src.word ?? ""),
+            };
+            if (typeof src.start === "number") out.start = src.start;
+            if (typeof src.end === "number") out.end = src.end;
+            if (typeof src.confidence === "number") out.confidence = src.confidence;
+            return out;
           })
         );
       }
 
       if (Array.isArray((data as Record<string, unknown>).paragraphs)) {
         setDgParagraphs(
-          (data as Record<string, unknown>).paragraphs.map((p: unknown) => {
-            const obj = (p ?? {}) as Record<string, unknown>;
-            const text = typeof obj.text === "string" ? obj.text : String(obj.text ?? "");
-            const start = typeof obj.start === "number" ? obj.start : undefined;
-            const end = typeof obj.end === "number" ? obj.end : undefined;
-            return { text, start, end };
+          ((data as Record<string, unknown>).paragraphs as unknown[]).map((p: unknown) => {
+            const src = (p ?? {}) as Record<string, unknown>;
+            const out: { text: string; start?: number; end?: number } = {
+              text: typeof src.text === "string" ? src.text : String(src.text ?? ""),
+            };
+            if (typeof src.start === "number") out.start = src.start;
+            if (typeof src.end === "number") out.end = src.end;
+            return out;
           })
         );
       }
@@ -208,7 +221,7 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
       // Notify parent with transcript, words, and paragraphs
       try {
         const wordsArr = Array.isArray((data as Record<string, unknown>).words)
-          ? ((data as Record<string, unknown>).words.map((raw: unknown) => {
+          ? (((data as Record<string, unknown>).words as unknown[]).map((raw: unknown) => {
               const wObj = (raw ?? {}) as Record<string, unknown>;
               const word = typeof wObj.word === "string" ? wObj.word : String(wObj.word ?? "");
               const start = typeof wObj.start === "number" ? wObj.start : undefined;
@@ -217,7 +230,7 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
             }) as Array<{ word: string; start?: number; end?: number }>)
           : null;
         const parasArr = Array.isArray((data as Record<string, unknown>).paragraphs)
-          ? ((data as Record<string, unknown>).paragraphs.map((raw: unknown) => {
+          ? (((data as Record<string, unknown>).paragraphs as unknown[]).map((raw: unknown) => {
               const pObj = (raw ?? {}) as Record<string, unknown>;
               const text = typeof pObj.text === "string" ? pObj.text : String(pObj.text ?? "");
               const start = typeof pObj.start === "number" ? pObj.start : undefined;
@@ -500,39 +513,7 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
     };
   }
 
-  function energyBadge(variability: number | null): { label: string; color: string } {
-    if (variability == null) return { label: "—", color: "#9CA3AF" };
-    // Heuristic: >=0.3 feels lively, <0.15 is flat
-    if (variability >= 0.3) return { label: "Alive", color: "#10B981" };
-    if (variability < 0.15) return { label: "Flat", color: "#EF4444" };
-    return { label: "Moderate", color: "#F59E0B" };
-  }
-
-  function expressivenessBadge(rangeHz: number | null): { label: string; color: string } {
-    if (rangeHz == null) return { label: "—", color: "#9CA3AF" };
-    if (rangeHz >= 80) return { label: "Expressive", color: "#10B981" };
-    if (rangeHz >= 40) return { label: "Moderate", color: "#F59E0B" };
-    return { label: "Flat", color: "#EF4444" };
-  }
-
-  function monotonyCompareText(mi: number | null): string {
-    if (mi == null) return "—";
-    const target = 0.35; // heuristic target for confident speakers
-    if (mi > target) {
-      const pct = Math.round(((mi - target) / target) * 100);
-      return `Your voice varied ${pct}% less than confident speakers.`;
-    } else if (mi < target) {
-      const pct = Math.round(((target - mi) / target) * 100);
-      return `Your voice varied ${pct}% more than confident speakers.`;
-    }
-    return "Matches confident speakers.";
-  }
-
-  function slopeLabel(s: number): { arrow: string; text: string } {
-    if (s > 10) return { arrow: "↑", text: "rising — may sound unsure" };
-    if (s < -10) return { arrow: "↓", text: "falling — reads as confident" };
-    return { arrow: "→", text: "flat — neutral ending" };
-  }
+  // removed unused helpers
 
   function renderTranscriptRich(): React.ReactNode {
     if (!transcript) return null;
@@ -700,14 +681,14 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
     return nodes;
   }
 
-  function getEffectiveDurationSec(): number | null {
+  const getEffectiveDurationSec = React.useCallback((): number | null => {
     if (Number.isFinite(audioDurationSec ?? NaN) && (audioDurationSec ?? 0) > 0) return audioDurationSec as number;
     if (dgWords && dgWords.length > 0) {
       const lastWithEnd = [...dgWords].reverse().find((w) => typeof w.end === "number");
       if (lastWithEnd?.end && lastWithEnd.end > 0) return lastWithEnd.end;
     }
     return elapsed > 0 ? elapsed : null;
-  }
+  }, [audioDurationSec, dgWords, elapsed]);
 
   function formatDuration(seconds: number | null): string {
     if (!seconds || !Number.isFinite(seconds) || seconds <= 0) return "—";
@@ -869,31 +850,13 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
       ratesWps,
       rateWindowSec,
     };
-  }, [dgWords, transcript, audioDurationSec, elapsed]);
+  }, [dgWords, transcript, getEffectiveDurationSec]);
 
   function clamp(n: number, lo: number, hi: number) {
     return Math.max(lo, Math.min(hi, n));
   }
 
-  function wpmLabel(wpm: number | null): string {
-    if (!wpm) return "—";
-    if (wpm < 110) return "A bit slow";
-    if (wpm <= 170) return "Clear, confident pace";
-    return "Too fast";
-  }
-
-  function polarToCartesian(cx: number, cy: number, r: number, angleDeg: number) {
-    const rad = ((angleDeg - 90) * Math.PI) / 180; // rotate so 0° is at top
-    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
-  }
-
-  function describeArc(cx: number, cy: number, r: number, startAngle: number, endAngle: number) {
-    const start = polarToCartesian(cx, cy, r, endAngle);
-    const end = polarToCartesian(cx, cy, r, startAngle);
-    const delta = Math.abs(endAngle - startAngle);
-    const largeArcFlag = delta <= 180 ? 0 : 1;
-    return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArcFlag} 1 ${end.x} ${end.y}`; // sweep=1 (clockwise)
-  }
+  // removed unused helpers
 
   async function startRecording() {
     setError(null);
@@ -984,6 +947,7 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
       tickRef.current = window.setInterval(() => setElapsed((s) => s + 1), 1000);
 
       setPhase("recording");
+      posthog.capture('started_recording');
     } catch (err: unknown) {
       const error = err as Error;
       if (error?.name === "NotAllowedError") {
@@ -1060,14 +1024,7 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
     }
   }
 
-  function play() {
-    if (!blobUrl || !audioElRef.current) return;
-    setPhase("playing");
-    audioElRef.current.currentTime = 0;
-    audioElRef.current.play().catch(() => {
-      setPhase("ready");
-    });
-  }
+  // removed unused helpers
 
   function onEnded() {
     setPhase("ready");
@@ -1095,8 +1052,7 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
     typeof MediaRecorder !== "undefined" &&
     navigator?.mediaDevices?.getUserMedia;
 
-  const disabled = phase === "recording";
-  const secondsLeft = Math.max(0, MAX_SECONDS - elapsed);
+  // removed unused variables
   const isDark = appearance === "onDark";
 
   const primaryBtnClass = phase === "recording"
@@ -1226,11 +1182,6 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
           <style jsx>{`
             @keyframes pulse-ring { from { transform: scale(1); opacity: 0.45; } to { transform: scale(1.5); opacity: 0; } }
           `}</style>
-          {/* Mic icon */}
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true" className="pointer-events-none">
-            <path d="M12 14a3 3 0 0 0 3-3V7a3 3 0 1 0-6 0v4a3 3 0 0 0 3 3Z" fill="white"/>
-            <path d="M5 11a1 1 0 1 0-2 0 9 9 0 0 0 8 8v3H9a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2h-2v-3a9 9 0 0 0 8-8 1 1 0 1 0-2 0 7 7 0 1 1-14 0Z" fill="white"/>
-          </svg>
           <span className="absolute inset-0 rounded-full" style={{ boxShadow: "0 0 0 0 rgba(239,68,68,0.5)", animation: "pulse-ring 1.6s ease-out infinite" }} />
         </button>
       ) : (
@@ -1308,7 +1259,7 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
           ref={audioElRef}
           src={blobUrl}
           onEnded={onEnded}
-          onLoadedMetadata={(e) => { onLoadedMetadata(); setPlaybackTime(0); }}
+          onLoadedMetadata={() => { onLoadedMetadata(); setPlaybackTime(0); }}
           onTimeUpdate={onTimeUpdate}
           onPlay={onPlayEvent}
           onPause={onPauseEvent}

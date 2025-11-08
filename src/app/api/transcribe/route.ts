@@ -4,11 +4,9 @@ import { ENV, USE_FIXTURE } from '../../../lib/env'
 import { 
   badRequest, 
   entityTooLarge, 
-  forbidden, 
   gatewayTimeout, 
   serverError, 
   ok,
-  validateRequest 
 } from '../../../lib/http'
 import { logApiCall, logError } from '../../../lib/log'
 import { getRequestId } from '../../../lib/context'
@@ -25,11 +23,7 @@ export const config = {
 // Zod schemas for validation
 const AllowedMimeTypes = z.enum(['audio/webm', 'audio/ogg', 'audio/mpeg', 'audio/wav'])
 
-const TranscribeRequestSchema = z.object({
-  'content-type': z.string().optional(),
-  'content-length': z.string().optional(),
-  'idempotency-key': z.string().optional().nullable(),
-})
+// Request schema unused currently (header validation handled inline)
 
 const TranscribeResponseSchema = z.object({
   transcript: z.string(),

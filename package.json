@@ -18,11 +18,17 @@
   "dependencies": {
     "@deepgram/sdk": "^4.11.2",
     "@google/genai": "^0.3.0",
+    "@supabase/ssr": "^0.7.0",
+    "@supabase/supabase-js": "^2.76.1",
     "comlink": "^4.4.2",
     "framer-motion": "^12.23.16",
     "next": "^15.5.3",
+    "posthog-js": "^1.275.1",
     "react": "19.1.0",
-    "react-dom": "19.1.0"
+    "react-dom": "19.1.0",
+    "recharts": "^3.3.0",
+    "redis": "^4.6.0",
+    "zod": "^3.22.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

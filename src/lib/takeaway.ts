@@ -1,6 +1,7 @@
 import { DeliverySummary, Goal, Takeaway } from "./delivery";
 
 export function takeaway(summary: DeliverySummary, _goal: Goal): Takeaway {
+  void _goal;
   // Edge: short clips
   if (typeof summary.durationSec === "number" && summary.durationSec < 10) {
     return {

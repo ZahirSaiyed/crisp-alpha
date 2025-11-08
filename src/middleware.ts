@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createServerClient as createMiddlewareClient } from '@supabase/ssr'
 import { createRequestId, withRequestId } from './lib/context'
 import { getClientIP, isRateLimited, getRateLimitInfo } from './lib/rateLimit'
 import { logRequest } from './lib/log'
@@ -12,7 +13,7 @@ const CSP_CONFIG = {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' blob: data:",
     "media-src 'self' blob:",
-    "connect-src 'self'",
+    "connect-src 'self' https://*.supabase.co", // Supabase API + Auth
     "font-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",
@@ -22,12 +23,12 @@ const CSP_CONFIG = {
   ],
   production: [
     "default-src 'self'",
-    "script-src 'self'", // No unsafe-* in production
+    "script-src 'self' 'unsafe-inline' https://us-assets.i.posthog.com https://us.i.posthog.com", // Next.js + PostHog
     "style-src 'self' 'unsafe-inline'", // Still needed for Tailwind
-    "img-src 'self' blob: data:",
+    "img-src 'self' blob: data: https:",
     "media-src 'self' blob:",
-    "connect-src 'self'",
-    "font-src 'self'",
+    "connect-src 'self' https://*.supabase.co https://us.i.posthog.com https://us-assets.i.posthog.com", // Supabase + PostHog API calls
+    "font-src 'self' data:",
     "object-src 'none'",
     "base-uri 'self'",
     "frame-ancestors 'none'",
@@ -42,11 +43,49 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const method = request.method
   
-  return withRequestId(requestId, () => {
+  return withRequestId(requestId, async () => {
+    let response = NextResponse.next()
+
+    // Auth session refresh for Supabase
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      const supabase = createMiddlewareClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+        {
+          cookies: {
+            getAll() {
+              return request.cookies.getAll()
+            },
+            setAll(cookiesToSet) {
+              cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+              response = NextResponse.next({
+                request,
+              })
+              cookiesToSet.forEach(({ name, value, options }) =>
+                response.cookies.set(name, value, options)
+              )
+            },
+          },
+        }
+      )
+
+      // Refresh session if expired
+      await supabase.auth.getUser()
+
+      // Protect dashboard route
+      if (pathname.startsWith('/dashboard')) {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+          const redirectUrl = new URL('/', request.url)
+          return NextResponse.redirect(redirectUrl)
+        }
+      }
+    }
+
     // Origin validation for API routes
     if (pathname.startsWith('/api/')) {
       const origin = request.headers.get('origin')
-      if (origin && origin !== ENV.NEXT_PUBLIC_BASE_URL) {
+      if (origin && ENV.NEXT_PUBLIC_BASE_URL && origin !== ENV.NEXT_PUBLIC_BASE_URL) {
         const response = new NextResponse('Forbidden', { status: 403 })
         response.headers.set('X-Request-ID', requestId)
         
@@ -59,35 +98,36 @@ export function middleware(request: NextRequest) {
         return response
       }
       
-      // Rate limiting
-      const ip = getClientIP(request)
-      if (isRateLimited(ip)) {
-        const rateLimitInfo = getRateLimitInfo(ip)
-        const response = new NextResponse('Too Many Requests', {
-          status: 429,
-          headers: {
-            'Retry-After': '600', // 10 minutes
-            'X-RateLimit-Limit': '20',
-            'X-RateLimit-Remaining': rateLimitInfo.remaining.toString(),
-            'X-RateLimit-Reset': new Date(rateLimitInfo.resetTime).toISOString(),
-          },
-        })
-        response.headers.set('X-Request-ID', requestId)
-        
-        logRequest(method, pathname, 429, Date.now() - startTime, requestId, {
-          reason: 'rate_limited',
-          ip,
-          remaining: rateLimitInfo.remaining
-        })
-        
-        return response
+      // Rate limiting (skip for authenticated session endpoints in dev)
+      const isDevSessionEndpoint = !IS_PROD && (pathname.includes('/sessions/recent') || pathname.includes('/sessions/migrate'))
+      
+      if (!isDevSessionEndpoint) {
+        const ip = getClientIP(request)
+        if (isRateLimited(ip)) {
+          const rateLimitInfo = getRateLimitInfo(ip)
+          const response = new NextResponse('Too Many Requests', {
+            status: 429,
+            headers: {
+              'Retry-After': '600', // 10 minutes
+              'X-RateLimit-Limit': '20',
+              'X-RateLimit-Remaining': rateLimitInfo.remaining.toString(),
+              'X-RateLimit-Reset': new Date(rateLimitInfo.resetTime).toISOString(),
+            },
+          })
+          response.headers.set('X-Request-ID', requestId)
+          
+          logRequest(method, pathname, 429, Date.now() - startTime, requestId, {
+            reason: 'rate_limited',
+            ip,
+            remaining: rateLimitInfo.remaining
+          })
+          
+          return response
+        }
       }
     }
     
-    // Create response with security headers
-    const response = NextResponse.next()
-    
-    // Request ID header
+    // Add security headers to response
     response.headers.set('X-Request-ID', requestId)
     
     // Security headers

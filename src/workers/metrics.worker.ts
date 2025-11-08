@@ -34,7 +34,9 @@ function computePausesFromRms(pcm: Float32Array, sr: number) {
   const pauses: Array<{ time: number; duration: number }> = [];
   let run = 0;
   for (let i = 0; i < norm.length; i++) {
-    if (norm[i] < SILENCE) {
+    const val = norm[i];
+    if (val === undefined) continue;
+    if (val < SILENCE) {
       run++;
     } else if (run > 0) {
       if (run >= minFrames) {
@@ -63,7 +65,10 @@ const api = {
       const head = pcm.subarray(0, headLen);
       const rms = (arr: Float32Array) => {
         let s = 0;
-        for (let i = 0; i < arr.length; i++) s += arr[i] * arr[i];
+        for (let i = 0; i < arr.length; i++) {
+          const val = arr[i];
+          if (val !== undefined) s += val * val;
+        }
         return Math.sqrt(s / arr.length);
       };
       const endRushIndexApprox = (rms(tail) - rms(head)) / Math.max(1e-6, rms(head));

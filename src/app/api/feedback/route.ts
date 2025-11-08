@@ -6,7 +6,6 @@ import {
   badRequest, 
   serverError, 
   ok,
-  validateRequest 
 } from '../../../lib/http'
 import { logApiCall, logError } from '../../../lib/log'
 import { getRequestId } from '../../../lib/context'
@@ -78,7 +77,7 @@ ${answer}
   return base;
 }
 
-function tokensToPlainText(tokens?: Array<{ word?: string }>): string {
+function tokensToPlainText(tokens?: Array<{ word?: string | undefined }>): string {
   if (!Array.isArray(tokens)) return "";
   return tokens.map((t) => (t?.word || "")).join(" ").trim();
 }
@@ -91,9 +90,9 @@ function tryParseJson(raw: string): unknown | null {
   
   // Try to extract JSON from markdown code blocks
   const codeBlockMatch = raw.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
-  if (codeBlockMatch) {
+  if (codeBlockMatch && codeBlockMatch[1]) {
     try {
-      return JSON.parse(codeBlockMatch[1]);
+      return JSON.parse(codeBlockMatch[1] as string);
     } catch {}
   }
   
@@ -134,12 +133,13 @@ export async function POST(req: NextRequest) {
 
     // Parse and validate request body
     const body = await req.json()
-    const validation = validateRequest(FeedbackRequestSchema, body)
-    if (!validation.success) {
-      return validation.error
+    const parsed = FeedbackRequestSchema.safeParse(body)
+    if (!parsed.success) {
+      const issues = parsed.error.issues.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ')
+      return badRequest(`Validation failed: ${issues}`, 'VALIDATION_ERROR', requestId)
     }
 
-    const { transcript, tokens, maxWords = 1200 } = validation.data
+    const { transcript, tokens, maxWords = 1200 } = parsed.data
 
     let answer = transcript && transcript.trim().length > 0 ? transcript : tokensToPlainText(tokens)
     if (!answer || answer.trim().length === 0) {

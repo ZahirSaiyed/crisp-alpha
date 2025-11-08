@@ -3,8 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import * as Comlink from "comlink";
 import { decodeToPCM16kMono } from "../../lib/audio";
-import { DeliverySummary, Goal } from "../../lib/delivery";
-import { takeaway } from "../../lib/takeaway";
+import { DeliverySummary } from "../../lib/delivery";
 import TranscriptPlayerCard from "../../components/TranscriptPlayerCard";
 import PromptSwiper from "../../components/PromptSwiper";
 import Recorder, { RecorderHandle } from "../../components/recorder";
@@ -13,77 +12,22 @@ import { detectFillerCounts, detectPauses, WordToken } from "../../lib/analysis"
 import FeedbackTile from "../../components/FeedbackTile";
 import PracticeAnswerTile from "../../components/PracticeAnswerTile";
 import LoadingOverlay from "../../components/LoadingOverlay";
+import ProgressPreview from "../../components/ProgressPreview";
+import { buildSessionMetrics } from "../../lib/metrics";
+import { useAuth } from "../../contexts/AuthContext";
+import posthog from "posthog-js";
+import ScenarioInput, { type Intent } from "../../components/ScenarioInput";
+import { applyIntentTheme, removeIntentTheme, getIntentLabel } from "../../lib/intentTheme";
 
 type MetricsRemote = Comlink.Remote<import("../../workers/metrics.worker").MetricsWorker>;
 
 type Paragraph = { text: string; start?: number; end?: number };
 
-type Prompt = { id: string; title: string; subtitle?: string; category?: string; icon?: string };
+type Prompt = { id: string; title: string; subtitle?: string | undefined; category?: string | undefined; icon?: string | undefined };
 
-type Persona = "jobSeeker" | "productManager" | "surprise";
-
-const CATEGORY_ICON: Record<string, string> = {
-  Clarity: "🔍",
-  Authority: "🏆",
-  Calmness: "🌊",
-  Engagement: "✨",
-  Impact: "🚀",
-  Wildcard: "🎲",
-};
-
-const PERSONA_LABELS: Record<Persona, { label: string; icon: string; sub: string }> = {
-  jobSeeker: { label: "Interview Prep", icon: "👤", sub: "Interview-ready prompts" },
-  productManager: { label: "Product manager", icon: "📦", sub: "PM prompts for real meetings" },
-  surprise: { label: "Surprise me", icon: "🎲", sub: "Fun & wildcard prompts" },
-};
-
-function buildPrompts(persona: Persona): Prompt[] {
-  if (persona === "jobSeeker") {
-    return [
-      { id: "js-clarity-1", title: "Walk me through your resume in under a minute.", category: "Clarity", icon: CATEGORY_ICON.Clarity },
-      { id: "js-clarity-2", title: "What’s a project you’re most proud of?", category: "Clarity", icon: CATEGORY_ICON.Clarity },
-      { id: "js-authority-1", title: "Why should we hire you over other candidates?", category: "Authority", icon: CATEGORY_ICON.Authority },
-      { id: "js-authority-2", title: "Tell me about a time you influenced a decision.", category: "Authority", icon: CATEGORY_ICON.Authority },
-      { id: "js-calm-1", title: "Tell me about yourself.", subtitle: "Classic opener — nerves spike here.", category: "Calmness", icon: CATEGORY_ICON.Calmness },
-      { id: "js-calm-2", title: "Describe a challenge you faced and how you handled it.", category: "Calmness", icon: CATEGORY_ICON.Calmness },
-      { id: "js-engage-1", title: "What excites you about this role?", category: "Engagement", icon: CATEGORY_ICON.Engagement },
-      { id: "js-engage-2", title: "Tell me about a time you worked on a team — what was your role?", category: "Engagement", icon: CATEGORY_ICON.Engagement },
-      { id: "js-impact-1", title: "Why do you want to work here?", category: "Impact", icon: CATEGORY_ICON.Impact },
-      { id: "js-impact-2", title: "Give me your elevator pitch for yourself in 30 seconds.", category: "Impact", icon: CATEGORY_ICON.Impact },
-    ];
-  }
-  if (persona === "productManager") {
-    return [
-      { id: "pm-clarity-1", title: "What’s the problem your team is solving right now?", category: "Clarity", icon: CATEGORY_ICON.Clarity },
-      { id: "pm-clarity-2", title: "Can you summarize your roadmap in 60 seconds?", category: "Clarity", icon: CATEGORY_ICON.Clarity },
-      { id: "pm-authority-1", title: "What’s your recommendation for next quarter and why?", category: "Authority", icon: CATEGORY_ICON.Authority },
-      { id: "pm-authority-2", title: "How would you convince leadership to prioritize your feature?", category: "Authority", icon: CATEGORY_ICON.Authority },
-      { id: "pm-calm-1", title: "Give us a quick status update on your project.", category: "Calmness", icon: CATEGORY_ICON.Calmness },
-      { id: "pm-calm-2", title: "Walk me through a recent launch — what went well, what didn’t?", category: "Calmness", icon: CATEGORY_ICON.Calmness },
-      { id: "pm-engage-1", title: "How would you explain this feature to a customer?", category: "Engagement", icon: CATEGORY_ICON.Engagement },
-      { id: "pm-engage-2", title: "What’s a user story that captures the value of your product?", category: "Engagement", icon: CATEGORY_ICON.Engagement },
-      { id: "pm-impact-1", title: "What’s your vision for this product in one sentence?", category: "Impact", icon: CATEGORY_ICON.Impact },
-      { id: "pm-impact-2", title: "What’s the one takeaway you want leadership to leave with today?", category: "Impact", icon: CATEGORY_ICON.Impact },
-    ];
-  }
-  // surprise / have fun
-  return [
-    { id: "fun-clarity-1", title: "Explain TikTok to your grandma in 30 seconds.", category: "Clarity", icon: CATEGORY_ICON.Clarity },
-    { id: "fun-clarity-2", title: "Teach me how to make your favorite meal.", category: "Clarity", icon: CATEGORY_ICON.Clarity },
-    { id: "fun-authority-1", title: "Convince me why pineapple does (or doesn’t) belong on pizza.", category: "Authority", icon: CATEGORY_ICON.Authority },
-    { id: "fun-authority-2", title: "Make the case for dogs vs cats in under a minute.", category: "Authority", icon: CATEGORY_ICON.Authority },
-    { id: "fun-calm-1", title: "Describe your perfect weekend as if you’re narrating a calm podcast.", category: "Calmness", icon: CATEGORY_ICON.Calmness },
-    { id: "fun-calm-2", title: "Explain how to relax after a stressful day.", category: "Calmness", icon: CATEGORY_ICON.Calmness },
-    { id: "fun-engage-1", title: "Tell me the funniest story that ever happened to you (keep it short).", category: "Engagement", icon: CATEGORY_ICON.Engagement },
-    { id: "fun-engage-2", title: "Describe a movie plot really badly and make me guess it.", category: "Engagement", icon: CATEGORY_ICON.Engagement },
-    { id: "fun-impact-1", title: "Give me your motivational one-liner for today.", category: "Impact", icon: CATEGORY_ICON.Impact },
-    { id: "fun-impact-2", title: "What’s one life tip you’d shout from a rooftop?", category: "Impact", icon: CATEGORY_ICON.Impact },
-    { id: "fun-wild-1", title: "Pick any random object near you and pitch it like it’s the next big startup.", category: "Wildcard", icon: CATEGORY_ICON.Wildcard },
-    { id: "fun-wild-2", title: "Pretend you’re introducing yourself to aliens — what do you say?", category: "Wildcard", icon: CATEGORY_ICON.Wildcard },
-  ];
-}
 
 export default function RecordPage() {
+  const { user } = useAuth();
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [coreSummary, setCoreSummary] = useState<Partial<DeliverySummary> | null>(null);
   const [tokens, setTokens] = useState<Array<{ word: string; start?: number; end?: number }> | null>(null);
@@ -91,7 +35,11 @@ export default function RecordPage() {
   const [rawTranscript, setRawTranscript] = useState<string | null>(null);
   const [durationSec, setDurationSec] = useState<number | null>(null);
   const [selectedPrompt, setSelectedPrompt] = useState<Prompt | null>(null);
-  const [persona, setPersona] = useState<Persona>("jobSeeker");
+  const [anonId, setAnonId] = useState<string | null>(null);
+  const [scenario, setScenario] = useState<string | null>(null);
+  const [intent, setIntent] = useState<Intent | null>(null);
+  const [generatedPrompts, setGeneratedPrompts] = useState<Prompt[]>([]);
+  const [isGeneratingPrompts, setIsGeneratingPrompts] = useState(false);
   const workerRef = useRef<Worker | null>(null);
   const metricsApiRef = useRef<MetricsRemote | null>(null);
   const lastUrlRef = useRef<string | null>(null);
@@ -100,22 +48,122 @@ export default function RecordPage() {
   const currentPhaseRef = useRef<string>("idle");
   const [isRecording, setIsRecording] = useState(false);
 
-  const personaPrompts = useMemo(() => buildPrompts(persona), [persona]);
-
+  // Set first prompt when prompts are generated
   useEffect(() => {
-    setSelectedPrompt(personaPrompts[0] ?? null);
-  }, [personaPrompts]);
-
-  // Keyboard shortcuts for persona tabs: 1/2/3
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "1") setPersona("jobSeeker");
-      if (e.key === "2") setPersona("productManager");
-      if (e.key === "3") setPersona("surprise");
+    if (generatedPrompts.length > 0) {
+      setSelectedPrompt(generatedPrompts[0] ?? null);
     }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+  }, [generatedPrompts]);
+
+  // Apply intent theme when intent changes
+  useEffect(() => {
+    if (intent) {
+      applyIntentTheme(intent);
+    }
+    return () => {
+      removeIntentTheme();
+    };
+  }, [intent]);
+
+  // Initialize or retrieve anonymous ID
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    let id = localStorage.getItem('crisp_anon_id');
+    if (!id) {
+      // Generate new UUID
+      id = crypto.randomUUID();
+      localStorage.setItem('crisp_anon_id', id);
+    }
+    setAnonId(id);
   }, []);
+
+  // Generate idempotency key
+  const generateIdempotencyKey = useCallback(async (scenario: string, intent: Intent) => {
+    const text = `${scenario}:${intent}`;
+    const encoder = new TextEncoder();
+    const data = encoder.encode(text);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  }, []);
+
+  // Handle prompt generation
+  const handleGeneratePrompts = useCallback(async (scenarioText: string, intentValue: Intent) => {
+    setScenario(scenarioText);
+    setIntent(intentValue);
+    setIsGeneratingPrompts(true);
+
+    try {
+      const idempotencyKey = await generateIdempotencyKey(scenarioText, intentValue);
+
+      const response = await fetch('/api/prompts/scenario', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          scenario: scenarioText,
+          intent: intentValue,
+          idempotencyKey,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to generate prompts: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('📦 API Response:', data);
+      
+      if (data.data && Array.isArray(data.data.prompts) && data.data.prompts.length > 0) {
+        setGeneratedPrompts(data.data.prompts);
+        posthog.capture('prompt_generation_success', {
+          source: data.data.source,
+          scenario_length: scenarioText.length,
+          intent: intentValue,
+        });
+        console.log('✅ Prompts generated:', data.data.prompts);
+      } else {
+        console.error('❌ Invalid response format:', data);
+        throw new Error('Invalid response format');
+      }
+    } catch (error) {
+      console.error('❌ Failed to generate prompts:', error);
+      // Even if API fails, try to get fallback prompts
+      // The API should always return something, but if fetch itself fails, we need a client-side fallback
+      try {
+        // Try one more time without idempotency to get fallback
+        const fallbackResponse = await fetch('/api/prompts/scenario', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            scenario: scenarioText,
+            intent: intentValue,
+          }),
+        });
+        
+        if (fallbackResponse.ok) {
+          const fallbackData = await fallbackResponse.json();
+          if (fallbackData.data && Array.isArray(fallbackData.data.prompts)) {
+            setGeneratedPrompts(fallbackData.data.prompts);
+            console.log('✅ Fallback prompts loaded:', fallbackData.data.prompts);
+            posthog.capture('prompt_generation_fallback', {
+              scenario_length: scenarioText.length,
+              intent: intentValue,
+            });
+          }
+        }
+      } catch (fallbackError) {
+        console.error('❌ Fallback also failed:', fallbackError);
+        posthog.capture('prompt_generation_failed', {
+          scenario_length: scenarioText.length,
+          intent: intentValue,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+    } finally {
+      setIsGeneratingPrompts(false);
+    }
+  }, [generateIdempotencyKey]);
 
   function ensureWorker(): MetricsRemote | null {
     if (!workerRef.current) {
@@ -126,9 +174,9 @@ export default function RecordPage() {
     return metricsApiRef.current;
   }
 
-  async function startCompute(url: string, blob: Blob) {
+  const startCompute = useCallback(async (url: string, blob: Blob) => {
     try {
-      console.log('🎯 startCompute called with URL:', url, 'and blob size:', blob.size);
+      console.warn('🎯 startCompute called with URL:', url, 'and blob size:', blob.size);
       computeInFlightRef.current = true;
       
       // Validate inputs
@@ -139,22 +187,22 @@ export default function RecordPage() {
         throw new Error('Invalid or empty blob provided');
       }
       
-      console.log('🔊 Decoding audio...');
+      console.warn('🔊 Decoding audio...');
       const { pcm, sampleRate, durationSec } = await decodeToPCM16kMono(blob);
-      console.log('✅ Audio decoded, duration:', durationSec);
+      console.warn('✅ Audio decoded, duration:', durationSec);
       
       // Set duration immediately so overlay can hide
       setDurationSec(durationSec);
       
       try {
-        console.log('👷 Ensuring worker...');
+        console.warn('👷 Ensuring worker...');
         const api = ensureWorker();
         if (!api) throw new Error("Worker unavailable");
-        console.log('✅ Worker available');
+        console.warn('✅ Worker available');
         
-        console.log('🧮 Computing metrics...');
+        console.warn('🧮 Computing metrics...');
         const summary = await api.computeCoreFromPcm(pcm, sampleRate);
-        console.log('✅ Metrics computed:', summary);
+      console.warn('✅ Metrics computed');
         
         const delivery: Partial<DeliverySummary> = {
           endRushIndex: summary.endRushIndexApprox ?? 0,
@@ -162,7 +210,7 @@ export default function RecordPage() {
           durationSec,
         } as Partial<DeliverySummary>;
         
-        console.log('💾 Setting core summary...');
+        console.warn('💾 Setting core summary...');
         setCoreSummary(delivery);
       } catch (workerError) {
         console.warn('⚠️ Worker failed, continuing without advanced metrics:', workerError);
@@ -175,7 +223,7 @@ export default function RecordPage() {
         setCoreSummary(delivery);
       }
       
-      console.log('✅ State updated successfully');
+      console.warn('✅ State updated successfully');
     } catch (error) {
       console.error('❌ Audio processing failed:', error);
       // Set minimal state to prevent getting stuck
@@ -183,45 +231,67 @@ export default function RecordPage() {
       setCoreSummary({ endRushIndex: 0, pauses: [], durationSec: 0 });
     } finally {
       computeInFlightRef.current = false;
-      console.log('🏁 startCompute finished');
+      console.warn('🏁 startCompute finished');
     }
-  }
+  }, []);
 
   const handlePhaseChange = useCallback((p: string) => {
-    console.log('🔄 Phase changed to:', p);
+    console.warn('🔄 Phase changed to:', p);
     currentPhaseRef.current = p;
   }, []);
 
   const handleBlobUrlChange = useCallback((url: string | null, blob: Blob | null | undefined) => {
-    console.log('🔍 handleBlobUrlChange called with:', url, 'blob:', blob);
-    console.log('🔍 Current phase:', currentPhaseRef.current);
-    console.log('🔍 Last URL:', lastUrlRef.current);
-    console.log('🔍 Compute in flight:', computeInFlightRef.current);
+    console.warn('🔍 handleBlobUrlChange called with:', url, 'blob:', blob);
+    console.warn('🔍 Current phase:', currentPhaseRef.current);
+    console.warn('🔍 Last URL:', lastUrlRef.current);
+    console.warn('🔍 Compute in flight:', computeInFlightRef.current);
     
     if (!url || !blob || lastUrlRef.current === url || computeInFlightRef.current) {
-      console.log('🔍 Early return - conditions not met');
+      console.warn('🔍 Early return - conditions not met');
       return;
     }
     if (currentPhaseRef.current !== "ready") {
-      console.log('🔍 Early return - phase not ready');
+      console.warn('🔍 Early return - phase not ready');
       return;
     }
     
-    console.log('🚀 Starting compute with URL:', url, 'and blob');
+    console.warn('🚀 Starting compute with URL:', url, 'and blob');
     lastUrlRef.current = url;
     setAudioUrl(url);
     startCompute(url, blob);
-  }, []);
+  }, [startCompute]);
 
-  const goal: Goal = "Authority";
-  const fullSummary = coreSummary as DeliverySummary | null;
-  const insight = fullSummary ? takeaway(fullSummary, goal) : null;
-  const [aiCoach, setAiCoach] = useState<{ headline?: string; subtext?: string } | null>(null);
+  const [aiCoach, setAiCoach] = useState<{ headline?: string | undefined; subtext?: string | undefined } | null>(null);
   const [aiPractice, setAiPractice] = useState<string | null>(null);
-  const [feedbackLoading, setFeedbackLoading] = useState(false);
-  const [transcribingLoading, setTranscribingLoading] = useState(false);
+  
+  // Handle session migration when user signs in
+  const handleSignIn = useCallback(async () => {
+    if (!anonId) return;
+    
+    try {
+      const response = await fetch('/api/sessions/migrate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ anon_id: anonId }),
+      });
 
-  const words = Array.isArray(tokens) ? tokens : [];
+      if (response.ok) {
+        const data = await response.json();
+        const migrated = data.migrated || 0;
+        if (migrated > 0) {
+          // Clear anon ID after migration
+          localStorage.removeItem('crisp_anon_id');
+          setAnonId(null);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to migrate sessions:', error);
+    }
+  }, [anonId]);
+  
+  // Track external loading states only for side-effects (no render dependency)
+
+  const words = useMemo(() => (Array.isArray(tokens) ? tokens : []), [tokens]);
   const pauseEvents = Array.isArray(words) && words.length > 0 ? detectPauses(words as WordToken[], 0.5) : (coreSummary?.pauses || []);
   const talkTimeSec = typeof durationSec === "number" ? durationSec : (words.length > 0 ? Math.max(...words.map(w => (w.end ?? w.start) || 0)) : null);
   const wpm = (() => {
@@ -246,7 +316,7 @@ export default function RecordPage() {
   );
 
   // Debug metrics
-  console.log('📊 Metrics debug:', {
+  console.warn('📊 Metrics debug:', {
     talkTimeSec,
     tokensLength: tokens?.length,
     rawTranscriptLength: rawTranscript?.length,
@@ -270,8 +340,88 @@ export default function RecordPage() {
     return () => window.clearTimeout(t);
   }, [audioUrl, hasAnyMetrics]);
 
+  // Track when results are displayed
+  useEffect(() => {
+    if (audioUrl && hasAnyMetrics) {
+      posthog.capture('viewed_results', {
+        session_id: audioUrl, // Using audioUrl as session identifier
+        duration_sec: durationSec,
+        word_count: tokens?.length || 0,
+        scenario: scenario,
+        intent: intent,
+        prompt_id: selectedPrompt?.id,
+        prompt_title: selectedPrompt?.title
+      });
+    }
+  }, [audioUrl, hasAnyMetrics, durationSec, tokens, scenario, intent, selectedPrompt]);
+
+  // Track prompt acceptance when user hits record
+  const handleRecordStart = useCallback(() => {
+    if (selectedPrompt) {
+      posthog.capture('prompt_accepted', {
+        prompt_id: selectedPrompt.id,
+        prompt_title: selectedPrompt.title,
+        scenario: scenario,
+        intent: intent,
+      });
+    }
+    recorderRef.current?.start();
+  }, [selectedPrompt, scenario, intent]);
+
+  // Save session metrics when we have complete data
+  useEffect(() => {
+    if (!hasAnyMetrics || !durationSec || !tokens || tokens.length === 0) return;
+    if (!wpm || wpm === null) return;
+
+    // Build session metrics from calculated values
+    const sessionMetrics = buildSessionMetrics({
+      wpm: wpm,
+      fillerCount: fillers.total,
+      totalWords: tokens.length,
+      pauseCount: pauseEvents.length,
+      talkTimeSec: durationSec,
+    });
+
+    // Save to API (works for both anonymous and authenticated users)
+    // Only save after user has recorded (prompt accepted)
+    async function saveSession() {
+      try {
+        const payload = {
+          ...sessionMetrics,
+          ...(user ? {} : { anon_id: anonId }), // Anonymous users include anon_id
+          ...(scenario ? { scenario } : {}),
+          ...(intent ? { intent } : {}),
+        };
+
+        const response = await fetch('/api/sessions/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          posthog.capture('session_created', {
+            session_id: data.data?.session_id,
+            scenario: scenario,
+            intent: intent,
+            duration_sec: durationSec,
+          });
+        } else {
+          const error = await response.json();
+          console.error('❌ Failed to save session:', response.status, error);
+        }
+      } catch (error) {
+        console.error('Failed to save session:', error);
+      }
+    }
+
+    saveSession();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasAnyMetrics, durationSec, tokens?.length, wpm, user, anonId, scenario, intent]);
+
   return (
-    <main className="min-h-screen bg-white text-[color:var(--ink)]">
+    <main className="min-h-screen bg-gradient-to-b from-[#F9F9FB] to-white text-[color:var(--ink)]">
       {/* Hidden recorder to handle programmatic start/stop. UI suppressed via props and visually hidden wrapper. */}
       <div className="mx-auto w-full max-w-[560px]">
         <Recorder
@@ -282,7 +432,6 @@ export default function RecordPage() {
           showUI={false}
           onPhaseChange={(p) => { handlePhaseChange(p); setIsRecording(p === "recording"); }}
           onBlobUrlChange={handleBlobUrlChange}
-          onTranscribingChange={(v) => setTranscribingLoading(Boolean(v))}
           onTranscript={({ transcript, words, paragraphs, durationSec }) => {
             setTokens(words ?? null);
             setParagraphs(paragraphs ?? null);
@@ -293,37 +442,31 @@ export default function RecordPage() {
       </div>
 
       {!audioUrl && (
-        <section className="relative mx-auto max-w-5xl px-6 min-h-[calc(100vh-4rem)] flex flex-col items-stretch justify-center gap-5 py-8">
-          {/* Persona tabs */}
-          <div role="tablist" aria-label="Personas" className="mx-auto w-full max-w-[560px] flex items-center justify-center gap-2">
-            {(["jobSeeker","productManager","surprise"] as Persona[]).map((key) => {
-              const active = persona === key;
-              return (
-                <button
-                  key={key}
-                  role="tab"
-                  aria-selected={active}
-                  onClick={() => setPersona(key)}
-                  className={`px-4 py-2 text-[13px] font-medium rounded-full transition transform ${active ? "bg-[color:var(--ink)] text-white" : "bg-[color:var(--muted-1)] text-[color:rgba(11,11,12,0.8)] hover:bg-[color:var(--muted-1)]/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--bright-purple)]"}`}
-                >
-                  <span className="mr-1">{PERSONA_LABELS[key as Persona].icon}</span>
-                  {PERSONA_LABELS[key as Persona].label}
-                </button>
-              );
-            })}
-          </div>
-          <div className="mx-auto w-full max-w-[560px] -mt-1 text-center text-[12px] text-[color:rgba(11,11,12,0.55)]">
-            {PERSONA_LABELS[persona].sub}
-          </div>
+        <section className="relative mx-auto max-w-5xl px-6 min-h-[calc(100vh-4rem)] flex flex-col items-stretch justify-center gap-3 py-8">
+          {generatedPrompts.length === 0 ? (
+            <>
+              {/* Scenario input - shown before prompts are generated */}
+              <ScenarioInput onGenerate={handleGeneratePrompts} isLoading={isGeneratingPrompts} />
+            </>
+          ) : (
+            <>
+              {/* Scenario + Intent header */}
+              {scenario && intent && (
+                <div className="mx-auto w-full max-w-[640px] mb-2 text-center">
+                  <p className="text-sm sm:text-base text-[color:rgba(11,11,12,0.7)]">
+                    Sounding more <span className="font-semibold text-[color:var(--intent-primary)]">{getIntentLabel(intent)}</span> for your <span className="font-semibold">{scenario}</span>
+                  </p>
+                </div>
+              )}
 
-          <PromptSwiper key={`ps-${persona}`} prompts={personaPrompts} onSelect={(p) => setSelectedPrompt(p)} />
+              <PromptSwiper key="scenario-prompts" prompts={generatedPrompts} onSelect={(p) => setSelectedPrompt(p)} />
           {/* Primary recording control: shown directly below the prompt for HCI clarity */}
-          <div className="mx-auto w-full max-w-[560px] flex flex-col items-center gap-2 pt-1">
+          <div className="mx-auto w-full max-w-[640px] flex flex-col items-center gap-2 -mt-1">
             {!isRecording ? (
               <button
                 type="button"
                 aria-label="Start recording"
-                onClick={() => recorderRef.current?.start()}
+                onClick={handleRecordStart}
                 className="rec-btn focus-visible:outline focus-visible:outline-2 focus-visible:outline-black"
               >
                 <style jsx>{`
@@ -334,18 +477,19 @@ export default function RecordPage() {
                     border-radius: 9999px;
                     background: #ef4444; /* red-600 */
                     transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 180ms, background-color 180ms;
+                    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4), 0 2px 8px rgba(239, 68, 68, 0.15);
                   }
                   .rec-btn:hover { 
-                    transform: scale(1.06);
-                    box-shadow: 0 10px 22px rgba(239, 68, 68, 0.28), 0 2px 6px rgba(239, 68, 68, 0.18);
+                    transform: scale(1.08);
+                    box-shadow: 0 0 0 8px rgba(239, 68, 68, 0.1), 0 12px 28px rgba(239, 68, 68, 0.35), 0 4px 12px rgba(239, 68, 68, 0.2);
                     background: #f05252; /* red-500 */
                   }
                   .rec-btn::after {
                     content: "";
                     position: absolute;
-                    inset: -6px;
+                    inset: -8px;
                     border-radius: inherit;
-                    border: 2px solid rgba(239, 68, 68, 0.45);
+                    border: 2px solid rgba(122, 92, 255, 0.3);
                     opacity: 0;
                     transform: scale(0.9);
                     transition: opacity 200ms, transform 200ms;
@@ -355,10 +499,6 @@ export default function RecordPage() {
                 <style jsx>{`
                   @keyframes pulse-ring { from { transform: scale(1); opacity: 0.45; } to { transform: scale(1.5); opacity: 0; } }
                 `}</style>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true" className="pointer-events-none">
-                  <path d="M12 14a3 3 0 0 0 3-3V7a3 3 0 1 0-6 0v4a3 3 0 0 0 3 3Z" fill="white"/>
-                  <path d="M5 11a1 1 0 1 0-2 0 9 9 0 0 0 8 8v3H9a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2h-2v-3a9 9 0 0 0 8-8 1 1 0 1 0-2 0 7 7 0 1 1-14 0Z" fill="white"/>
-                </svg>
                 <span className="absolute inset-0 rounded-full" style={{ boxShadow: "0 0 0 0 rgba(239,68,68,0.5)", animation: "pulse-ring 1.6s ease-out infinite" }} />
               </button>
             ) : (
@@ -374,9 +514,10 @@ export default function RecordPage() {
                 </span>
               </button>
             )}
-            <span className="text-xs text-[color:rgba(11,11,12,0.6)]" aria-live="polite">{isRecording ? "Recording…" : "Tap to start recording"}</span>
+            <span className="text-xs text-[color:rgba(11,11,12,0.6)]" aria-live="polite">{isRecording ? "Recording…" : "Ready when you are"}</span>
           </div>
-
+            </>
+          )}
           {/* Single, canonical recording control is handled by the embedded <Recorder /> via ref. */}
         </section>
       )}
@@ -385,11 +526,11 @@ export default function RecordPage() {
         <section className="relative mx-auto max-w-5xl px-6 py-8 grid grid-cols-1 gap-6">
           <LoadingOverlay show={overlayVisible} label="Preparing your insights…" />
 
-          {(aiCoach || insight) && (
+          {aiCoach && (
             <div className="rounded-[20px] shadow-[0_12px_40px_rgba(0,0,0,0.06)] bg-white/90 backdrop-blur border border-[color:var(--muted-2)] p-5 sm:p-6">
-              <div className="text-[11px] uppercase tracking-[0.08em] text-[color:rgba(11,11,12,0.55)] mb-2">Coach Insight</div>
-              <div className="text-[22px] sm:text-[26px] font-extrabold leading-snug tracking-[-0.01em]">{aiCoach?.headline || insight?.headline}</div>
-              <div className="text-sm sm:text-base mt-2 text-[color:rgba(11,11,12,0.75)]">{aiCoach?.subtext || insight?.subtext}</div>
+              <div className="text-[11px] uppercase tracking-[0.08em] text-[color:var(--bright-purple)] mb-2 font-medium">Coach Insight</div>
+              <div className="text-[22px] sm:text-[26px] font-extrabold leading-snug tracking-[-0.01em]">{aiCoach.headline}</div>
+              <div className="text-sm sm:text-base mt-2 text-[color:rgba(11,11,12,0.75)]">{aiCoach.subtext}</div>
               {selectedPrompt && (
                 <div className="mt-3 text-xs text-[color:rgba(11,11,12,0.55)]">Prompt: {selectedPrompt.title}</div>
               )}
@@ -409,10 +550,15 @@ export default function RecordPage() {
             transcript={rawTranscript}
             tokens={tokens as WordToken[] | null}
             onStructured={(s) => {
-              if (s?.coachInsight) setAiCoach({ headline: s.coachInsight.headline, subtext: s.coachInsight.subtext });
+              if (s?.coachInsight) {
+                const { headline, subtext } = s.coachInsight;
+                setAiCoach({ 
+                  ...(headline !== undefined && { headline }), 
+                  ...(subtext !== undefined && { subtext }) 
+                });
+              }
               if (typeof s?.improvedAnswer === "string") setAiPractice(s.improvedAnswer);
             }}
-            onLoadingChange={(v) => setFeedbackLoading(Boolean(v))}
           />
           
           {/* Privacy disclaimer */}
@@ -421,6 +567,9 @@ export default function RecordPage() {
               🔒 Your audio was securely processed and immediately discarded. Nothing is stored.
             </p>
           </div>
+
+          {/* Progress tracking teaser for anonymous users */}
+          <ProgressPreview onSignIn={handleSignIn} />
         </section>
       )}
     </main>

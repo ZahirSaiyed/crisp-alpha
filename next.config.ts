@@ -4,17 +4,11 @@ const nextConfig: NextConfig = {
   // Enable React strict mode for better development experience
   reactStrictMode: true,
   
-  // Use SWC minifier for better performance
-  swcMinify: true,
-  
   // Disable source maps in production for security
   productionBrowserSourceMaps: false,
   
-  // Experimental features for better performance
-  experimental: {
-    // Enable server components logging in development
-    serverComponentsExternalPackages: [],
-  },
+  // External packages for server components
+  serverExternalPackages: [],
   
   // Optimize images
   images: {
@@ -24,8 +18,19 @@ const nextConfig: NextConfig = {
   // Security headers as fallback (middleware handles most cases)
   async headers() {
     return [
+      // Allow public assets (OG images, robots.txt, etc.) to be accessed without restrictions
       {
-        source: '/(.*)',
+        source: '/:path(og-image.png|robots.txt|favicon.ico|icon.svg)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      // Apply security headers to all other routes
+      {
+        source: '/((?!og-image.png|robots.txt|favicon.ico|icon.svg).*)',
         headers: [
           {
             key: 'X-Content-Type-Options',
@@ -33,11 +38,22 @@ const nextConfig: NextConfig = {
           },
           {
             key: 'X-Frame-Options',
-            value: 'DENY',
+            value: 'SAMEORIGIN', // Changed from DENY to SAMEORIGIN for better compatibility
           },
           {
             key: 'Referrer-Policy',
-            value: 'no-referrer',
+            value: 'strict-origin-when-cross-origin', // Changed to allow social media crawlers
+          },
+          {
+            key: 'Content-Security-Policy',
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://us-assets.i.posthog.com https://us.i.posthog.com",
+              "connect-src 'self' https://us.i.posthog.com https://us-assets.i.posthog.com",
+              "img-src 'self' data: https:",
+              "style-src 'self' 'unsafe-inline'",
+              "font-src 'self' data:",
+            ].join('; '),
           },
         ],
       },

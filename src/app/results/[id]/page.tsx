@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getSession } from "../../../lib/sessionStore";
 import TranscriptPanel from "../../../components/TranscriptPanel";
 import MetricsTile from "../../../components/MetricsTile";
 import { detectFillerCounts, detectPauses, WordToken } from "../../../lib/analysis";
+import posthog from "posthog-js";
 
 export default function ResultsPage() {
   const params = useParams();
@@ -22,6 +23,16 @@ export default function ResultsPage() {
   }, [session, router]);
 
   useEffect(() => {
+    if (session) {
+      posthog.capture('viewed_results', {
+        session_id: id,
+        duration_sec: session.durationSec,
+        word_count: session.tokens?.length || 0
+      });
+    }
+  }, [session, id]);
+
+  useEffect(() => {
     // Feature flag check - coach functionality disabled for now
     setCoachStatus("error");
     return;
@@ -33,9 +44,9 @@ export default function ResultsPage() {
         const res = await fetch(`/api/coach/${id}`, { cache: "no-store" });
         const data = await res.json();
         if (canceled) return;
-        const st = (data?.status as string) || "pending";
+        const st: "pending"|"ready"|"error" | string = (data?.status as string) || "pending";
         if (st === "ready" || st === "error") {
-          setCoachStatus(st as any);
+          setCoachStatus(st as "ready"|"error");
           setPolling(false);
           return;
         }
@@ -65,14 +76,14 @@ export default function ResultsPage() {
   const fillers = detectFillerCounts(tokens);
 
   return (
-    <main className="min-h-screen bg-white text-[color:var(--ink)]">
+    <main className="min-h-screen bg-gradient-to-b from-[#F9F9FB] to-white text-[color:var(--ink)]">
       <head>
         <meta name="robots" content="noindex,nofollow" />
       </head>
-      <header className="mx-auto max-w-5xl px-6 py-4 flex items-center justify-between">
+      <header className="mx-auto max-w-5xl px-6 py-6 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold">Results</h1>
-          <p className="text-sm text-[color:rgba(11,11,12,0.65)]">Transcript and basic metrics.</p>
+          <h1 className="text-2xl font-bold text-[color:var(--ink)]">Your Results</h1>
+          <p className="text-sm text-[color:rgba(11,11,12,0.65)] mt-1">Insights from your speaking practice</p>
         </div>
         {/* Coach functionality disabled for now */}
         {false && (
@@ -82,7 +93,7 @@ export default function ResultsPage() {
         )}
       </header>
 
-      <section className="mx-auto max-w-5xl px-6 grid gap-4">
+      <section className="mx-auto max-w-5xl px-6 grid gap-6 pb-8">
         <MetricsTile
           talkTimeSec={talkTimeSec}
           wpm={wpm}

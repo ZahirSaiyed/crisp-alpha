@@ -3,6 +3,7 @@
 import React, { useRef, useState } from "react";
 import { motion, useMotionValue, useSpring } from "framer-motion";
 import Link from "next/link";
+import posthog from "posthog-js";
 
 export default function MagneticCTA({ href, children, disabled = false, loading = false, onClick }: { href?: string; children: React.ReactNode; disabled?: boolean; loading?: boolean; onClick?: (e: React.MouseEvent) => void }) {
   const ref = useRef<HTMLDivElement | null>(null);
@@ -34,6 +35,12 @@ export default function MagneticCTA({ href, children, disabled = false, loading 
       e.stopPropagation();
       return;
     }
+    
+    // Track "start training" click if href is /record
+    if (href === '/record') {
+      posthog.capture('clicked_start_training');
+    }
+    
     const el = ref.current;
     if (el) {
       const rect = el.getBoundingClientRect();
@@ -46,7 +53,7 @@ export default function MagneticCTA({ href, children, disabled = false, loading 
     onClick?.(e);
   }
 
-  const commonClass = `relative cta-ylw px-6 sm:px-8 py-3 sm:py-3.5 text-base sm:text-lg font-semibold inline-block overflow-hidden ${disabled ? "opacity-60 cursor-not-allowed" : ""}`;
+  const commonClass = `relative cta-ylw px-6 sm:px-8 py-3 sm:py-3.5 text-base sm:text-lg font-semibold inline-block overflow-hidden shadow-[0_4px_16px_rgba(255,233,0,0.25),_0_2px_8px_rgba(255,233,0,0.15)] hover:shadow-[0_6px_20px_rgba(255,233,0,0.35),_0_3px_12px_rgba(255,233,0,0.2)] transition-all duration-300 transform hover:scale-105 ${disabled ? "opacity-60 cursor-not-allowed" : ""}`;
 
   const Content = (
     <>

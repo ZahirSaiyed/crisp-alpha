@@ -3,8 +3,11 @@ import { z } from 'zod'
 const serverSchema = z.object({
   DEEPGRAM_API_KEY: z.string().min(1, 'DEEPGRAM_API_KEY is required'),
   GEMINI_API_KEY: z.string().min(1, 'GEMINI_API_KEY is required'),
-  NEXT_PUBLIC_BASE_URL: z.string().url('NEXT_PUBLIC_BASE_URL must be a valid URL'),
-  NODE_ENV: z.enum(['development', 'production', 'test']),
+  NEXT_PUBLIC_BASE_URL: z.string().optional(),
+  NEXT_PUBLIC_SUPABASE_URL: z.string().url('NEXT_PUBLIC_SUPABASE_URL must be a valid URL').optional(),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().optional(),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
+  NODE_ENV: z.enum(['development', 'production', 'test']).default('production'),
   USE_FIXTURE: z.string().optional(),
 })
 
