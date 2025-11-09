@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState, useMemo } from "react";
+import { motion } from "framer-motion";
 import * as Comlink from "comlink";
 import { decodeToPCM16kMono } from "../../lib/audio";
 import { DeliverySummary } from "../../lib/delivery";
 import TranscriptPlayerCard from "../../components/TranscriptPlayerCard";
-import PromptSwiper from "../../components/PromptSwiper";
+import PromptBoard from "../../components/PromptBoard";
 import Recorder, { RecorderHandle } from "../../components/recorder";
 import MetricsTile from "../../components/MetricsTile";
 import { detectFillerCounts, detectPauses, WordToken } from "../../lib/analysis";
@@ -17,7 +18,7 @@ import { buildSessionMetrics } from "../../lib/metrics";
 import { useAuth } from "../../contexts/AuthContext";
 import posthog from "posthog-js";
 import ScenarioInput, { type Intent } from "../../components/ScenarioInput";
-import { applyIntentTheme, removeIntentTheme, getIntentLabel } from "../../lib/intentTheme";
+import { applyIntentTheme, removeIntentTheme, getIntentLabel, getIntentTheme, hexToRgba } from "../../lib/intentTheme";
 
 type MetricsRemote = Comlink.Remote<import("../../workers/metrics.worker").MetricsWorker>;
 
@@ -47,13 +48,10 @@ export default function RecordPage() {
   const recorderRef = useRef<RecorderHandle | null>(null);
   const currentPhaseRef = useRef<string>("idle");
   const [isRecording, setIsRecording] = useState(false);
+  const [isPreparing, setIsPreparing] = useState(false);
+  const [freestyleText, setFreestyleText] = useState<string | undefined>(undefined);
 
-  // Set first prompt when prompts are generated
-  useEffect(() => {
-    if (generatedPrompts.length > 0) {
-      setSelectedPrompt(generatedPrompts[0] ?? null);
-    }
-  }, [generatedPrompts]);
+  // Don't auto-select first prompt - let user choose
 
   // Apply intent theme when intent changes
   useEffect(() => {
@@ -402,18 +400,53 @@ export default function RecordPage() {
     }
   }, [audioUrl, hasAnyMetrics, durationSec, tokens, scenario, intent, selectedPrompt]);
 
-  // Track prompt acceptance when user hits record
-  const handleRecordStart = useCallback(() => {
-    if (selectedPrompt) {
+  // Handle prompt selection (for highlighting)
+  const handleSelectPrompt = useCallback((prompt: Prompt) => {
+    setSelectedPrompt(prompt);
+  }, []);
+
+  // Handle practice button click - start recording with brief preparation
+  const handlePracticePrompt = useCallback((prompt: Prompt) => {
+    setSelectedPrompt(prompt);
+    setIsPreparing(true);
+    
+    const startRecording = () => {
       posthog.capture('prompt_accepted', {
-        prompt_id: selectedPrompt.id,
-        prompt_title: selectedPrompt.title,
+        prompt_id: prompt.id,
+        prompt_title: prompt.title,
         scenario: scenario,
         intent: intent,
       });
-    }
-    recorderRef.current?.start();
-  }, [selectedPrompt, scenario, intent]);
+      recorderRef.current?.start();
+    };
+    
+    // Brief preparation, then start recording
+    setTimeout(() => {
+      setIsPreparing(false);
+      startRecording();
+    }, 1000);
+  }, [scenario, intent]);
+
+  // Handle freestyle practice
+  const handleFreestylePractice = useCallback(() => {
+    setSelectedPrompt({ id: 'freestyle', title: scenario || 'Freestyle practice' }); // Set freestyle as selected
+    setIsPreparing(true);
+    
+    const startRecording = () => {
+      posthog.capture('freestyle_recording_started', {
+        scenario: scenario,
+        intent: intent,
+      });
+      recorderRef.current?.start();
+    };
+    
+    // Brief preparation, then start recording
+    setTimeout(() => {
+      setIsPreparing(false);
+      startRecording();
+    }, 1000);
+  }, [scenario, intent]);
+
 
   // Save session metrics when we have complete data
   useEffect(() => {
@@ -438,6 +471,8 @@ export default function RecordPage() {
           ...(user ? {} : { anon_id: anonId }), // Anonymous users include anon_id
           ...(scenario ? { scenario } : {}),
           ...(intent ? { intent } : {}),
+          ...(freestyleText ? { freestyle_text: freestyleText } : {}),
+          ...(selectedPrompt ? { prompt_id: selectedPrompt.id, prompt_title: selectedPrompt.title } : { is_freestyle: true }),
         };
 
         const response = await fetch('/api/sessions/create', {
@@ -469,6 +504,7 @@ export default function RecordPage() {
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-[#F9F9FB] to-white text-[color:var(--ink)]">
+
       {/* Hidden recorder to handle programmatic start/stop. UI suppressed via props and visually hidden wrapper. */}
       <div className="mx-auto w-full max-w-[560px]">
         <Recorder
@@ -477,7 +513,14 @@ export default function RecordPage() {
           appearance="onLight"
           disableLegacyResults={true}
           showUI={false}
-          onPhaseChange={(p) => { handlePhaseChange(p); setIsRecording(p === "recording"); }}
+          onPhaseChange={(p) => { 
+            handlePhaseChange(p); 
+            setIsRecording(p === "recording");
+            // Clear preparation state when recording starts
+            if (p === "recording") {
+              setIsPreparing(false);
+            }
+          }}
           onBlobUrlChange={handleBlobUrlChange}
           onTranscript={({ transcript, words, paragraphs, durationSec }) => {
             setTokens(words ?? null);
@@ -497,72 +540,120 @@ export default function RecordPage() {
             </>
           ) : (
             <>
-              {/* Scenario + Intent header */}
-              {scenario && intent && (
-                <div className="mx-auto w-full max-w-[640px] mb-2 text-center">
-                  <p className="text-sm sm:text-base text-[color:rgba(11,11,12,0.7)]">
-                    Sounding more <span className="font-semibold text-[color:var(--intent-primary)]">{getIntentLabel(intent)}</span> for your <span className="font-semibold">{scenario}</span>
-                  </p>
+                {/* Scenario + Intent header */}
+                {scenario && intent && (
+                  <div className="mx-auto w-full max-w-[640px] mb-6">
+                    <div className="text-center mb-4">
+                      <p className="text-base sm:text-lg text-[color:rgba(11,11,12,0.75)] leading-relaxed">
+                        Let's help you sound more <span className="font-semibold text-[color:var(--intent-primary)]">{getIntentLabel(intent)}</span> for your <span className="font-semibold">{scenario}</span>.
+                      </p>
+                    </div>
+                    {/* Start/Stop button - appears when a prompt is selected */}
+                    {selectedPrompt && intent && (() => {
+                      const theme = getIntentTheme(intent);
+                      const primaryColor = theme?.primary || "#7C3AED";
+                      return (
+                        <motion.div
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                          className="flex flex-col items-center gap-2"
+                        >
+                          {isPreparing ? (
+                            <motion.div
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              className="px-8 py-3.5 rounded-2xl text-sm font-medium text-[color:rgba(11,11,12,0.70)]"
+                            >
+                              <span>Getting ready...</span>
+                            </motion.div>
+                          ) : !isRecording ? (
+                            <motion.button
+                              type="button"
+                              onClick={() => {
+                                if (selectedPrompt.id === 'freestyle') {
+                                  handleFreestylePractice();
+                                } else {
+                                  handlePracticePrompt(selectedPrompt);
+                                }
+                              }}
+                              whileHover={{ 
+                                scale: 1.05,
+                                x: 4,
+                              }}
+                              whileTap={{ scale: 0.98 }}
+                              className="group px-8 py-3.5 rounded-2xl text-sm font-medium text-white transition-all duration-250 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 flex items-center justify-center gap-2"
+                              style={{ 
+                                backgroundColor: primaryColor,
+                                boxShadow: `0 4px 20px ${hexToRgba(primaryColor, 0.4)}`,
+                              }}
+                            >
+                              <span>Start practice</span>
+                              <motion.svg
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                animate={{
+                                  x: [0, 3, 0],
+                                }}
+                                transition={{
+                                  duration: 1.5,
+                                  repeat: Infinity,
+                                  ease: "easeInOut",
+                                }}
+                              >
+                                <path d="M5 12h14M12 5l7 7-7 7" />
+                              </motion.svg>
+                            </motion.button>
+                          ) : (
+                            <motion.button
+                              type="button"
+                              onClick={() => recorderRef.current?.stop()}
+                              whileHover={{ 
+                                scale: 1.05,
+                              }}
+                              whileTap={{ scale: 0.98 }}
+                              className="px-8 py-3.5 rounded-2xl text-sm font-medium text-white transition-all duration-250 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 flex items-center justify-center gap-2"
+                              style={{ 
+                                backgroundColor: "#EF4444",
+                                boxShadow: `0 4px 20px ${hexToRgba("#EF4444", 0.4)}`,
+                              }}
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                <rect x="6" y="6" width="12" height="12" rx="2" fill="white"/>
+                              </svg>
+                              <span>Stop recording</span>
+                            </motion.button>
+                          )}
+                        </motion.div>
+                      );
+                    })()}
+                  </div>
+                )}
+
+                <PromptBoard
+                prompts={generatedPrompts}
+                selectedPromptId={selectedPrompt?.id || null}
+                intent={intent}
+                scenario={scenario}
+                onSelectPrompt={handleSelectPrompt}
+                onPracticePrompt={handlePracticePrompt}
+                onFreestylePractice={handleFreestylePractice}
+                isRecording={isRecording}
+                isPreparing={isPreparing}
+              />
+              
+              {/* Recording status - shown when recording */}
+              {isRecording && (
+                <div className="mx-auto w-full max-w-[640px] flex flex-col items-center gap-2">
+                  <span className="text-sm text-[color:rgba(11,11,12,0.6)]" aria-live="polite">Recording…</span>
                 </div>
               )}
-
-              <PromptSwiper key="scenario-prompts" prompts={generatedPrompts} onSelect={(p) => setSelectedPrompt(p)} />
-          {/* Primary recording control: shown directly below the prompt for HCI clarity */}
-          <div className="mx-auto w-full max-w-[640px] flex flex-col items-center gap-2 -mt-1">
-            {!isRecording ? (
-              <button
-                type="button"
-                aria-label="Start recording"
-                onClick={handleRecordStart}
-                className="rec-btn focus-visible:outline focus-visible:outline-2 focus-visible:outline-black"
-              >
-                <style jsx>{`
-                  .rec-btn {
-                    position: relative;
-                    width: 56px;
-                    height: 56px;
-                    border-radius: 9999px;
-                    background: #ef4444; /* red-600 */
-                    transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 180ms, background-color 180ms;
-                    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4), 0 2px 8px rgba(239, 68, 68, 0.15);
-                  }
-                  .rec-btn:hover { 
-                    transform: scale(1.08);
-                    box-shadow: 0 0 0 8px rgba(239, 68, 68, 0.1), 0 12px 28px rgba(239, 68, 68, 0.35), 0 4px 12px rgba(239, 68, 68, 0.2);
-                    background: #f05252; /* red-500 */
-                  }
-                  .rec-btn::after {
-                    content: "";
-                    position: absolute;
-                    inset: -8px;
-                    border-radius: inherit;
-                    border: 2px solid rgba(122, 92, 255, 0.3);
-                    opacity: 0;
-                    transform: scale(0.9);
-                    transition: opacity 200ms, transform 200ms;
-                  }
-                  .rec-btn:hover::after { opacity: 1; transform: scale(1); }
-                `}</style>
-                <style jsx>{`
-                  @keyframes pulse-ring { from { transform: scale(1); opacity: 0.45; } to { transform: scale(1.5); opacity: 0; } }
-                `}</style>
-                <span className="absolute inset-0 rounded-full" style={{ boxShadow: "0 0 0 0 rgba(239,68,68,0.5)", animation: "pulse-ring 1.6s ease-out infinite" }} />
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => recorderRef.current?.stop()}
-                aria-pressed
-                className="px-6 sm:px-8 py-3 sm:py-3.5 rounded-full text-base sm:text-lg font-semibold bg-red-600 text-white shadow-[0_10px_22px_rgba(239,68,68,0.28),_0_2px_6px_rgba(239,68,68,0.18)] hover:bg-red-500"
-              >
-                <span className="inline-flex items-center gap-2">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2" fill="white"/></svg>
-                  Stop
-                </span>
-              </button>
-            )}
-            <span className="text-xs text-[color:rgba(11,11,12,0.6)]" aria-live="polite">{isRecording ? "Recording…" : "Ready when you are"}</span>
-          </div>
             </>
           )}
           {/* Single, canonical recording control is handled by the embedded <Recorder /> via ref. */}
