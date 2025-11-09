@@ -63,12 +63,12 @@ function StepCard({ step }: { step: Step }) {
   }).scrollYProgress;
   
   const y = useTransform(stepScrollProgress, [0, 1], [50, 0]);
-  const opacity = useTransform(stepScrollProgress, [0, 0.3, 0.7, 1], [0, 0.5, 1, 1]);
-  const scale = useTransform(stepScrollProgress, [0, 0.5, 1], [0.9, 0.95, 1]);
+  const opacity = useTransform(stepScrollProgress, [0, 0.2, 0.6, 1], [0, 0.7, 1, 1]);
+  const scale = useTransform(stepScrollProgress, [0, 0.4, 1], [0.9, 0.98, 1]);
   const iconRotate = useTransform(stepScrollProgress, [0, 1], [-180, 0]);
-  const iconScale = useTransform(stepScrollProgress, [0, 0.5, 1], [0, 0.8, 1]);
-  const titleOpacity = useTransform(stepScrollProgress, [0.2, 0.5], [0, 1]);
-  const descOpacity = useTransform(stepScrollProgress, [0.4, 0.7], [0, 1]);
+  const iconScale = useTransform(stepScrollProgress, [0, 0.4, 1], [0, 0.9, 1]);
+  const titleOpacity = useTransform(stepScrollProgress, [0.15, 0.4], [0, 1]);
+  const descOpacity = useTransform(stepScrollProgress, [0.3, 0.6], [0, 1]);
   
   return (
     <motion.div
@@ -78,10 +78,6 @@ function StepCard({ step }: { step: Step }) {
         opacity,
         scale,
         willChange: 'transform, opacity'
-      }}
-      whileHover={{ 
-        y: -4,
-        transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] }
       }}
       className="flex flex-col items-center text-center cursor-default"
     >
@@ -102,11 +98,6 @@ function StepCard({ step }: { step: Step }) {
           willChange: 'transform',
           rotate: iconRotate,
           scale: iconScale
-        }}
-        whileHover={{ 
-          scale: 1.1,
-          rotate: 5,
-          transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] }
         }}
       >
         {step.icon}
