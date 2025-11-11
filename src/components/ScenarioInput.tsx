@@ -172,14 +172,14 @@ export default function ScenarioInput({ onGenerate, isLoading = false }: Scenari
   const canGenerate = scenario.trim().length > 0 && selectedIntent !== null && !isLoading;
 
   return (
-    <div className="w-full max-w-[640px] mx-auto space-y-8">
+    <div className="w-full max-w-[640px] mx-auto space-y-6 sm:space-y-7 md:space-y-8">
       {/* Main scenario input */}
-      <div className="space-y-5">
+      <div className="space-y-3 sm:space-y-4 md:space-y-5">
         <label htmlFor="scenario-input" className="block text-center">
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[color:var(--ink)] mb-4 leading-tight tracking-tight" style={{ fontFamily: 'var(--font-playfair), Georgia, serif' }}>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-[color:var(--ink)] mb-3 sm:mb-4 leading-tight tracking-tight px-2" style={{ fontFamily: 'var(--font-playfair), Georgia, serif' }}>
             What moment are you preparing for?
           </h2>
-          <p className="text-base sm:text-lg text-[color:rgba(11,11,12,0.65)] font-medium leading-relaxed">
+          <p className="text-sm sm:text-base md:text-lg text-[color:rgba(11,11,12,0.65)] font-medium leading-relaxed px-2">
             Share your scenario
           </p>
         </label>
@@ -220,7 +220,7 @@ export default function ScenarioInput({ onGenerate, isLoading = false }: Scenari
               }
             }}
             placeholder=""
-            className="w-full px-5 py-4 sm:py-5 rounded-xl border-2 bg-white text-[color:var(--ink)] text-base sm:text-lg font-medium focus:outline-none transition-all duration-200 shadow-sm"
+            className="w-full px-4 sm:px-5 py-3.5 sm:py-4 md:py-5 rounded-xl border-2 bg-white text-[color:var(--ink)] text-sm sm:text-base md:text-lg font-medium focus:outline-none transition-all duration-200 shadow-sm"
           style={
             selectedIntent && scenario.trim().length > 0
               ? {
@@ -236,8 +236,8 @@ export default function ScenarioInput({ onGenerate, isLoading = false }: Scenari
           />
           {/* Typing animation overlay */}
           {!isFocused && !scenario && isTyping && (
-            <div className="absolute inset-0 px-5 py-4 sm:py-5 flex items-center pointer-events-none">
-              <span className="text-base sm:text-lg font-medium text-[color:rgba(11,11,12,0.4)] leading-normal">
+            <div className="absolute inset-0 px-4 sm:px-5 py-3.5 sm:py-4 md:py-5 flex items-center pointer-events-none">
+              <span className="text-sm sm:text-base md:text-lg font-medium text-[color:rgba(11,11,12,0.4)] leading-normal">
                 {displayText}
                 <span className="inline-block w-0.5 h-5 bg-[color:var(--intent-persuasive)] ml-1.5 animate-pulse align-middle" style={{ marginTop: '2px' }} />
               </span>
@@ -254,12 +254,12 @@ export default function ScenarioInput({ onGenerate, isLoading = false }: Scenari
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.25 }}
-            className="space-y-5"
+            className="space-y-3 sm:space-y-4 md:space-y-5"
           >
-            <p className="text-center text-base sm:text-lg font-semibold text-[color:var(--ink)] leading-relaxed">
+            <p className="text-center text-sm sm:text-base md:text-lg font-semibold text-[color:var(--ink)] leading-relaxed px-2">
               How do you want to sound?
             </p>
-            <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
+            <div className="grid grid-cols-3 items-stretch gap-2 sm:gap-3 md:gap-4 px-2">
               {INTENTS.map((intent) => {
                 const isSelected = selectedIntent === intent.value;
                 const theme = getIntentTheme(intent.value);
@@ -272,7 +272,7 @@ export default function ScenarioInput({ onGenerate, isLoading = false }: Scenari
                     disabled={isLoading}
                     aria-pressed={isSelected}
                     style={isSelected ? { backgroundColor: primaryColor } : {}}
-                    className={`px-5 sm:px-7 py-3.5 rounded-xl text-sm sm:text-base font-semibold transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50 disabled:cursor-not-allowed leading-relaxed ${
+                    className={`px-2 sm:px-3 md:px-5 lg:px-7 py-2 sm:py-2.5 md:py-3 lg:py-3.5 rounded-lg sm:rounded-xl text-xs sm:text-sm md:text-base font-semibold transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50 disabled:cursor-not-allowed leading-relaxed ${
                       isSelected
                         ? "text-white shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
                         : "bg-white border-2 border-[color:var(--muted-2)] text-[color:var(--ink)] hover:border-opacity-50 shadow-sm"
@@ -303,12 +303,12 @@ export default function ScenarioInput({ onGenerate, isLoading = false }: Scenari
       </AnimatePresence>
 
       {/* Generate button */}
-      <div className="flex justify-center pt-6">
+      <div className="flex justify-center pt-4 sm:pt-5 md:pt-6">
         <button
           type="button"
           onClick={handleGenerate}
           disabled={!canGenerate || isLoading}
-          className={`px-12 py-4 sm:py-5 rounded-full text-lg sm:text-xl font-bold transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 leading-tight tracking-tight ${
+          className={`px-8 sm:px-10 md:px-12 py-3 sm:py-4 md:py-5 rounded-full text-base sm:text-lg md:text-xl font-bold transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 leading-tight tracking-tight ${
             canGenerate && !isLoading
               ? "bg-[color:var(--intent-persuasive)] text-white shadow-[0_6px_20px_rgba(124,58,237,0.3)] hover:shadow-[0_8px_28px_rgba(124,58,237,0.4)] hover:scale-105"
               : isLoading

@@ -16,12 +16,18 @@ function getSupabaseCredentials() {
 
 /**
  * Browser client for client-side operations (auth, queries from React components)
+ * Note: @supabase/ssr's createBrowserClient handles cookies automatically
  */
 export function createBrowserClient() {
   const credentials = getSupabaseCredentials()
   
   if (!credentials) {
     // Return a mock client that fails gracefully
+    return null
+  }
+
+  // Only create client in browser environment
+  if (typeof window === 'undefined') {
     return null
   }
 

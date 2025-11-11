@@ -9,6 +9,7 @@ const serverSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('production'),
   USE_FIXTURE: z.string().optional(),
+  SKIP_GEMINI_PROMPTS: z.string().optional(),
 })
 
 // Parse and validate environment variables at boot time
@@ -26,3 +27,4 @@ export const IS_PROD = ENV.NODE_ENV === 'production'
 export const IS_DEV = ENV.NODE_ENV === 'development'
 export const IS_TEST = ENV.NODE_ENV === 'test'
 export const USE_FIXTURE = IS_DEV && ENV.USE_FIXTURE === 'true'
+export const SKIP_GEMINI_PROMPTS = ENV.SKIP_GEMINI_PROMPTS === 'true'

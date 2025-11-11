@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { GoogleGenAI } from '@google/genai'
-import { ENV } from '../../../../lib/env'
+import { ENV, SKIP_GEMINI_PROMPTS } from '../../../../lib/env'
 import { 
   badRequest, 
   serverError, 
@@ -217,6 +217,18 @@ export async function POST(req: NextRequest) {
 
     // Create request promise for idempotency
     const requestPromise = (async () => {
+      // Skip Gemini if SKIP_GEMINI_PROMPTS is enabled (for local testing)
+      if (SKIP_GEMINI_PROMPTS) {
+        // Fallback: keyword detection → category → predefined prompts
+        const category = detectCategoryFromScenario(scenario) || 'surprise' // Default to surprise if no match
+        const fallbackPrompts = getFallbackPrompts(category as PromptCategory)
+
+        return {
+          prompts: fallbackPrompts,
+          source: 'fallback' as const,
+        }
+      }
+
       // Try Gemini first
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 20000) // 20s timeout

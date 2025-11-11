@@ -25,6 +25,10 @@
   --warn: #FFB800;
   --bad: #FF5C5C;
   
+  /* Feedback accent colors */
+  --accent-grn: #10B981; /* Green for strengths */
+  --bright-purple: #7C3AED; /* Purple for recommendations */
+  
   /* Rings */
   --ring-idle: #e5e7eb;
   --ring-active: var(--intent-persuasive);

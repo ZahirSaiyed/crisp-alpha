@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import Gauge from "./Gauge";
 import { AnimatePresence, motion } from "framer-motion";
 import posthog from "posthog-js";
@@ -28,9 +28,12 @@ const MAX_SECONDS = 90;
 export type RecorderHandle = {
   start: () => void;
   stop: () => void;
+  pause: () => void;
+  resume: () => void;
+  getStream: () => MediaStream | null;
 };
 
-const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; appearance?: "onLight" | "onDark"; onPhaseChange?: (p: Phase) => void; onBlobUrlChange?: (url: string | null, blob?: Blob | null) => void; disableLegacyResults?: boolean; onTranscript?: (p: { transcript: string | null; words: Array<{ word: string; start?: number; end?: number }> | null; paragraphs?: Array<{ text: string; start?: number; end?: number }> | null; durationSec?: number | null; }) => void; onTranscribingChange?: (loading: boolean) => void; showUI?: boolean }>(function Recorder({ stickyMobileCTA = true, appearance = "onLight", onPhaseChange, onBlobUrlChange, disableLegacyResults = false, onTranscript, onTranscribingChange, showUI = true }, ref) {
+const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; appearance?: "onLight" | "onDark"; onPhaseChange?: (p: Phase) => void; onBlobUrlChange?: (url: string | null, blob?: Blob | null) => void; disableLegacyResults?: boolean; onTranscript?: (p: { transcript: string | null; words: Array<{ word: string; start?: number; end?: number }> | null; paragraphs?: Array<{ text: string; start?: number; end?: number }> | null; durationSec?: number | null; }) => void; onTranscribingChange?: (loading: boolean) => void; showUI?: boolean; onStreamChange?: (stream: MediaStream | null) => void }>(function Recorder({ stickyMobileCTA = true, appearance = "onLight", onPhaseChange, onBlobUrlChange, disableLegacyResults = false, onTranscript, onTranscribingChange, showUI = true, onStreamChange }, ref) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState<string | null>(null);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
@@ -71,6 +74,11 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
   useEffect(() => {
     onBlobUrlChange?.(blobUrl, currentBlob);
   }, [blobUrl, currentBlob, onBlobUrlChange]);
+
+  // Expose stream to parent - call whenever stream changes
+  const notifyStreamChange = useCallback(() => {
+    onStreamChange?.(streamRef.current);
+  }, [onStreamChange]);
 
   // Stable event handlers via refs to avoid effect deps on changing functions
   const startRecordingRef = useRef(startRecording);
@@ -140,6 +148,7 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
     streamRef.current?.getTracks().forEach((t) => t.stop());
     mediaRecorderRef.current = null;
     streamRef.current = null;
+    notifyStreamChange();
     clearTimers();
   }
 
@@ -878,6 +887,7 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
+      notifyStreamChange();
 
       const chosen = pickSupportedMime();
       setMimeType(chosen);
@@ -897,6 +907,7 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
         setPhase("ready");
         streamRef.current?.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
+        notifyStreamChange();
         clearTimers();
         setTimeout(() => transcribeAudio(finalBlob), 0);
       };
@@ -908,11 +919,12 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
             if (finalizedRef.current) return;
             const retryBlob = new Blob(chunksRef.current, { type });
             if (retryBlob.size === 0) {
-              setTranscriptionError("No audio captured. Please try recording for a few seconds.");
-              setPhase("idle");
-              streamRef.current?.getTracks().forEach((t) => t.stop());
-              streamRef.current = null;
-              clearTimers();
+          setTranscriptionError("No audio captured. Please try recording for a few seconds.");
+          setPhase("idle");
+          streamRef.current?.getTracks().forEach((t) => t.stop());
+          streamRef.current = null;
+          notifyStreamChange();
+          clearTimers();
               return;
             }
             finalize(retryBlob);
@@ -961,6 +973,31 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
     }
   }
 
+  function pauseRecording() {
+    try {
+      const mr = mediaRecorderRef.current;
+      if (!mr || mr.state !== "recording") return;
+      mr.pause();
+      if (tickRef.current) {
+        window.clearInterval(tickRef.current);
+        tickRef.current = null;
+      }
+    } catch (error) {
+      console.error("Failed to pause recording:", error);
+    }
+  }
+
+  function resumeRecording() {
+    try {
+      const mr = mediaRecorderRef.current;
+      if (!mr || mr.state !== "paused") return;
+      mr.resume();
+      tickRef.current = window.setInterval(() => setElapsed((s) => s + 1), 1000);
+    } catch (error) {
+      console.error("Failed to resume recording:", error);
+    }
+  }
+
   function stopRecording() {
     try {
       const mr = mediaRecorderRef.current;
@@ -984,6 +1021,7 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
           setPhase("ready");
           streamRef.current?.getTracks().forEach((trk) => trk.stop());
           streamRef.current = null;
+          notifyStreamChange();
           clearTimers();
           setTimeout(() => transcribeAudio(blob), 0);
         } else {
@@ -991,6 +1029,7 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
           setPhase("idle");
           streamRef.current?.getTracks().forEach((trk) => trk.stop());
           streamRef.current = null;
+          notifyStreamChange();
           clearTimers();
         }
       }, 1500);
@@ -1000,6 +1039,9 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
   React.useImperativeHandle(ref, () => ({
     start: () => { startRecording(); },
     stop: () => { stopRecording(); },
+    pause: () => { pauseRecording(); },
+    resume: () => { resumeRecording(); },
+    getStream: () => streamRef.current,
   }));
 
   function onLoadedMetadata() {
@@ -1070,14 +1112,14 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
   
   function resetSession() {
     // Reset to idle and clear artifacts
-    setPhase("idle");
-    setTranscript(null);
-    setDgWords(null);
-    setDgParagraphs(null);
-    setBlobUrl(null);
-    setCurrentBlob(null);
-    setAudioDurationSec(null);
-    setEnergy(null);
+      setPhase("idle");
+      setTranscript(null);
+      setDgWords(null);
+      setDgParagraphs(null);
+      setBlobUrl(null);
+      setCurrentBlob(null);
+      setAudioDurationSec(null);
+      setEnergy(null);
     setTranscriptionError(null);
     setEnergyError(null);
     setElapsed(0);

@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import posthog from "posthog-js";
-import { getIntentTheme, hexToRgba } from "../lib/intentTheme";
+import { getIntentTheme } from "../lib/intentTheme";
 import type { Intent } from "./ScenarioInput";
 
 type Prompt = { 
@@ -24,7 +24,6 @@ interface PromptBoardProps {
   onFreestylePractice: () => void;
   isRecording?: boolean;
   isPreparing?: boolean;
-  onStartPractice?: () => void;
 }
 
 export default function PromptBoard({
@@ -33,11 +32,12 @@ export default function PromptBoard({
   intent,
   scenario,
   onSelectPrompt,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   onPracticePrompt,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   onFreestylePractice,
   isRecording = false,
   isPreparing = false,
-  onStartPractice,
 }: PromptBoardProps) {
   const intentTheme = intent ? getIntentTheme(intent) : null;
   const isFreestyleSelected = selectedPromptId === 'freestyle';
@@ -52,32 +52,20 @@ export default function PromptBoard({
     });
   };
 
-  const handlePracticeClick = (prompt: Prompt) => {
-    onPracticePrompt(prompt);
-  };
-
   const handleFreestyleSelect = () => {
     onSelectPrompt({ id: 'freestyle', title: scenario || 'Freestyle practice' } as Prompt);
     posthog.capture('freestyle_selected');
   };
 
-  const handleFreestylePractice = () => {
-    posthog.capture('freestyle_practice_started', {
-      scenario: scenario,
-    });
-    onFreestylePractice();
-  };
-
   return (
-    <div className="w-full max-w-[900px] mx-auto space-y-8">
+    <div className="w-full max-w-[900px] mx-auto space-y-4 sm:space-y-8">
       {/* Prompt Cards Grid */}
-      <div className={`flex flex-col gap-6 items-center md:items-stretch ${
-        isExpanded && selectedPromptId && !isFreestyleSelected ? 'md:flex-row' : 'md:grid md:grid-cols-3'
+      <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 md:gap-6 ${
+        isExpanded && selectedPromptId && !isFreestyleSelected ? 'md:flex md:flex-row' : ''
       }`}>
-        <AnimatePresence mode="popLayout">
-          {prompts.map((prompt, index) => {
+        <AnimatePresence mode="sync">
+          {prompts.map((prompt) => {
             const isSelected = selectedPromptId === prompt.id;
-            const shouldShow = !isExpanded || isSelected;
             const theme = intentTheme;
             const primaryColor = theme?.primary || "#7C3AED";
             const bgTint = theme?.bgTint || "rgba(124, 58, 237, 0.05)";
@@ -89,8 +77,9 @@ export default function PromptBoard({
             return (
               <motion.div
                 key={prompt.id}
-                layout
-                initial={{ opacity: 0, y: 12 }}
+                {...(isExpanded ? { layoutId: `prompt-card-${prompt.id}` } : {})}
+                layout={isExpanded}
+                initial={false}
                 animate={{ 
                   opacity: 1,
                   y: 0,
@@ -100,12 +89,14 @@ export default function PromptBoard({
                 exit={{ 
                   opacity: 0,
                   scale: 0.95,
-                  transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] }
+                  transition: { duration: 0.15, ease: [0.22, 1, 0.36, 1] }
                 }}
                 transition={{ 
-                  layout: { duration: 0.5, ease: [0.22, 1, 0.36, 1] },
-                  opacity: { duration: 0.4 },
-                  delay: isExpanded ? 0 : index * 0.08,
+                  layout: { duration: 0.25, ease: [0.22, 1, 0.36, 1] },
+                  opacity: { duration: 0 },
+                  borderWidth: { duration: 0 },
+                  backgroundColor: { duration: 0 },
+                  y: { duration: 0.2 },
                   ease: [0.22, 1, 0.36, 1]
                 }}
                 whileHover={!isSelected && !isRecording && !isPreparing ? { 
@@ -115,24 +106,13 @@ export default function PromptBoard({
                     ease: [0.22, 1, 0.36, 1],
                   }
                 } : {}}
-                className={`relative rounded-[32px] border-2 text-[color:var(--ink)] p-8 sm:p-10 ${
-                  isExpanded && isSelected ? 'w-full' : 'w-[85%] md:w-full'
-                } flex flex-col h-[240px] cursor-pointer ${
+                className={`relative rounded-xl sm:rounded-2xl md:rounded-[32px] border-2 text-[color:var(--ink)] p-4 sm:p-6 md:p-8 lg:p-10 ${
+                  isExpanded && isSelected ? 'w-full' : 'w-full'
+                } flex flex-col h-auto min-h-[120px] sm:min-h-[160px] md:min-h-[200px] lg:h-[240px] cursor-pointer ${
                   isSelected
                     ? ""
                     : "border-[color:var(--muted-2)]"
                 }`}
-              style={
-                isSelected
-                  ? {
-                      borderColor: primaryColor,
-                      backgroundColor: bgTint,
-                      boxShadow: `0 8px 32px ${primaryColor}20, 0 4px 16px rgba(11,11,12,0.08)`,
-                    }
-                  : {
-                      boxShadow: "0 4px 20px rgba(11,11,12,0.06), 0 2px 8px rgba(11,11,12,0.04)",
-                    }
-              }
               onClick={() => {
                 if (!isRecording && !isPreparing) {
                   handlePromptClick(prompt);
@@ -145,21 +125,24 @@ export default function PromptBoard({
                       backgroundColor: bgTint,
                       boxShadow: `0 8px 32px ${primaryColor}20, 0 4px 16px rgba(11,11,12,0.08)`,
                     }
-                  : {}
+                  : {
+                      boxShadow: "0 4px 20px rgba(11,11,12,0.06), 0 2px 8px rgba(11,11,12,0.04)",
+                    }
               }
             >
               {/* Selected indicator - checkmark */}
               {isSelected && (
-                <div className="absolute top-6 right-6">
+                <div className="absolute top-3 right-3 sm:top-4 sm:right-4 md:top-6 md:right-6">
                   <div
-                    className="w-7 h-7 rounded-full flex items-center justify-center"
+                    className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 rounded-full flex items-center justify-center"
                     style={{
                       backgroundColor: primaryColor,
                     }}
                   >
                     <svg
-                      width="14"
-                      height="14"
+                      width="12"
+                      height="12"
+                      className="sm:w-3 sm:h-3 md:w-[14px] md:h-[14px]"
                       viewBox="0 0 24 24"
                       fill="none"
                       stroke="white"
@@ -177,15 +160,15 @@ export default function PromptBoard({
               <div className="flex-1 flex flex-col">
                 {/* Category badge - subtle, minimal */}
                 {prompt.category && (
-                  <div className="mb-3">
-                    <span className="inline-flex items-center text-[9px] font-medium tracking-[0.05em] text-[color:rgba(11,11,12,0.45)] uppercase">
+                  <div className="mb-2 sm:mb-3">
+                    <span className="inline-flex items-center text-[8px] sm:text-[9px] font-medium tracking-[0.05em] text-[color:rgba(11,11,12,0.45)] uppercase">
                       {prompt.category}
                     </span>
                   </div>
                 )}
 
                 {/* Prompt title - refined, elegant */}
-                <h3 className="text-[1.125rem] sm:text-[1.25rem] leading-[1.35] tracking-[-0.015em] text-[color:var(--ink)] font-medium flex-1">
+                <h3 className="text-sm sm:text-base md:text-[1.125rem] lg:text-[1.25rem] leading-[1.35] tracking-[-0.015em] text-[color:var(--ink)] font-medium flex-1">
                   {prompt.title}
                 </h3>
               </div>
@@ -201,7 +184,7 @@ export default function PromptBoard({
         {(!isExpanded || isFreestyleSelected) && (
           <motion.div
             layout
-            initial={{ opacity: 0, y: 12 }}
+            initial={false}
             animate={{ 
               opacity: 1,
               y: 0,
@@ -211,13 +194,15 @@ export default function PromptBoard({
             exit={{ 
               opacity: 0,
               scale: 0.95,
-              transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] }
+              transition: { duration: 0.15, ease: [0.22, 1, 0.36, 1] }
             }}
             transition={{ 
-              layout: { duration: 0.5, ease: [0.22, 1, 0.36, 1] },
-              opacity: { duration: 0.4 },
-              delay: isExpanded ? 0 : 0.16, 
-              ease: [0.22, 1, 0.36, 1],
+              layout: { duration: 0.25, ease: [0.22, 1, 0.36, 1] },
+              opacity: { duration: 0 },
+              borderWidth: { duration: 0 },
+              backgroundColor: { duration: 0 },
+              y: { duration: 0.2 },
+              ease: [0.22, 1, 0.36, 1]
             }}
             whileHover={!isFreestyleSelected && !isRecording && !isPreparing ? { 
               y: -2,
@@ -231,9 +216,9 @@ export default function PromptBoard({
                 handleFreestyleSelect();
               }
             }}
-            className={`relative rounded-[32px] border-2 text-[color:var(--ink)] p-5 sm:p-6 ${
-              isExpanded && isFreestyleSelected ? 'w-full' : 'w-[85%] md:w-full'
-            } mx-auto md:mx-0 flex flex-col h-[110px] cursor-pointer ${
+            className={`relative rounded-xl sm:rounded-2xl md:rounded-[32px] border-2 text-[color:var(--ink)] p-3 sm:p-4 md:p-5 lg:p-6 ${
+              isExpanded && isFreestyleSelected ? 'w-full' : 'w-full'
+            } flex flex-col h-auto min-h-[90px] sm:min-h-[100px] md:h-[110px] cursor-pointer ${
           isFreestyleSelected
             ? ""
             : "border-[color:var(--muted-2)]/60"
@@ -252,16 +237,17 @@ export default function PromptBoard({
       >
         {/* Selected indicator - checkmark */}
         {isFreestyleSelected && intentTheme && (
-          <div className="absolute top-5 right-5">
+          <div className="absolute top-2 right-2 sm:top-3 sm:right-3 md:top-5 md:right-5">
             <div
-              className="w-7 h-7 rounded-full flex items-center justify-center"
+              className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 rounded-full flex items-center justify-center"
               style={{
                 backgroundColor: intentTheme.primary,
               }}
             >
               <svg
-                width="14"
-                height="14"
+                width="12"
+                height="12"
+                className="sm:w-3 sm:h-3 md:w-[14px] md:h-[14px]"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="white"
@@ -276,18 +262,18 @@ export default function PromptBoard({
         )}
 
         {/* Compact header */}
-        <div className="flex items-start gap-2.5">
-          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[color:var(--muted-1)] to-[color:var(--muted-2)] flex items-center justify-center flex-shrink-0 mt-0.5">
+        <div className="flex items-start gap-2 sm:gap-2.5">
+          <div className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 rounded-full bg-gradient-to-br from-[color:var(--muted-1)] to-[color:var(--muted-2)] flex items-center justify-center flex-shrink-0 mt-0.5">
             <svg
-              width="14"
-              height="14"
+              width="12"
+              height="12"
+              className="sm:w-3 sm:h-3 md:w-[14px] md:h-[14px] text-[color:rgba(11,11,12,0.60)]"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="text-[color:rgba(11,11,12,0.60)]"
             >
               <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
               <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
@@ -296,12 +282,12 @@ export default function PromptBoard({
             </svg>
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-[0.9375rem] sm:text-[1rem] leading-[1.3] tracking-[-0.01em] text-[color:var(--ink)] font-medium">
+            <h3 className="text-xs sm:text-sm md:text-[0.9375rem] lg:text-[1rem] leading-[1.3] tracking-[-0.01em] text-[color:var(--ink)] font-medium">
               Or practice freely
             </h3>
             {scenario && (
-              <p className="text-[0.8125rem] sm:text-[0.875rem] leading-[1.4] text-[color:rgba(11,11,12,0.70)] italic truncate mt-1">
-                "{scenario}"
+              <p className="text-[10px] sm:text-xs md:text-[0.8125rem] lg:text-[0.875rem] leading-[1.4] text-[color:rgba(11,11,12,0.70)] italic truncate mt-0.5 sm:mt-1">
+                &quot;{scenario}&quot;
               </p>
             )}
           </div>

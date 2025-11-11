@@ -16,7 +16,7 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
-  const supabase = createBrowserClient()
+  const [supabase] = useState(() => createBrowserClient())
 
   useEffect(() => {
     if (!supabase) {
@@ -68,27 +68,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const signOut = async () => {
-    if (!supabase) {
-      console.warn('Supabase not configured')
-      setUser(null)
-      return
-    }
-
-    try {
-      const { error } = await supabase.auth.signOut()
-      if (error) {
-        console.error('Sign out error:', error)
-        // Fall through to clear local state anyway
-      }
-    } catch (error) {
-      console.error('Sign out failed (network issue):', error)
-      // Fall through to clear local state anyway
+    // Clear local state immediately
+    setUser(null)
+    localStorage.removeItem('crisp_anon_id')
+    
+    // Sign out from Supabase
+    if (supabase) {
+      await supabase.auth.signOut()
     }
     
-    // Always clear local state, even if API call fails
-    setUser(null)
-    // Clear any auth-related localStorage
-    localStorage.removeItem('crisp_anon_id')
+    // Call server-side sign out to clear cookies
+    try {
+      await fetch('/api/auth/signout', {
+        method: 'POST',
+        credentials: 'include',
+      })
+    } catch {
+      // Ignore errors, we've already cleared local state
+    }
+    
+    // Redirect to home
+    window.location.href = '/'
   }
 
   return (

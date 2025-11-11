@@ -8,6 +8,7 @@ import { DeliverySummary } from "../../lib/delivery";
 import TranscriptPlayerCard from "../../components/TranscriptPlayerCard";
 import PromptBoard from "../../components/PromptBoard";
 import Recorder, { RecorderHandle } from "../../components/recorder";
+import RecordingTakeover from "../../components/RecordingTakeover";
 import MetricsTile from "../../components/MetricsTile";
 import { detectFillerCounts, detectPauses, WordToken } from "../../lib/analysis";
 import FeedbackTile from "../../components/FeedbackTile";
@@ -48,8 +49,12 @@ export default function RecordPage() {
   const recorderRef = useRef<RecorderHandle | null>(null);
   const currentPhaseRef = useRef<string>("idle");
   const [isRecording, setIsRecording] = useState(false);
-  const [isPreparing, setIsPreparing] = useState(false);
-  const [freestyleText, setFreestyleText] = useState<string | undefined>(undefined);
+  const [showTakeover, setShowTakeover] = useState(false);
+  const [recordingState, setRecordingState] = useState<"idle" | "arming" | "recording">("idle");
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [permissionState, setPermissionState] = useState<"prompt" | "denied" | null>(null);
+  const [elapsed, setElapsed] = useState(0);
+  const elapsedIntervalRef = useRef<number | null>(null);
 
   // Don't auto-select first prompt - let user choose
 
@@ -405,47 +410,119 @@ export default function RecordPage() {
     setSelectedPrompt(prompt);
   }, []);
 
-  // Handle practice button click - start recording with brief preparation
+  // Handle practice button click - open takeover
   const handlePracticePrompt = useCallback((prompt: Prompt) => {
     setSelectedPrompt(prompt);
-    setIsPreparing(true);
-    
-    const startRecording = () => {
-      posthog.capture('prompt_accepted', {
-        prompt_id: prompt.id,
-        prompt_title: prompt.title,
-        scenario: scenario,
-        intent: intent,
-      });
-      recorderRef.current?.start();
-    };
-    
-    // Brief preparation, then start recording
-    setTimeout(() => {
-      setIsPreparing(false);
-      startRecording();
-    }, 1000);
+    setShowTakeover(true);
+    setRecordingState("idle");
+    setElapsed(0);
+    posthog.capture('prompt_selected_for_practice', {
+      prompt_id: prompt.id,
+      prompt_title: prompt.title,
+      scenario: scenario,
+      intent: intent,
+    });
   }, [scenario, intent]);
 
   // Handle freestyle practice
   const handleFreestylePractice = useCallback(() => {
-    setSelectedPrompt({ id: 'freestyle', title: scenario || 'Freestyle practice' }); // Set freestyle as selected
-    setIsPreparing(true);
-    
-    const startRecording = () => {
-      posthog.capture('freestyle_recording_started', {
-        scenario: scenario,
-        intent: intent,
-      });
-      recorderRef.current?.start();
-    };
-    
-    // Brief preparation, then start recording
-    setTimeout(() => {
-      setIsPreparing(false);
-      startRecording();
-    }, 1000);
+    const freestylePrompt = { id: 'freestyle', title: scenario || 'Freestyle practice' };
+    setSelectedPrompt(freestylePrompt);
+    setShowTakeover(true);
+    setRecordingState("idle");
+    setElapsed(0);
+    posthog.capture('freestyle_selected_for_practice', {
+      scenario: scenario,
+      intent: intent,
+    });
   }, [scenario, intent]);
+
+  // Check microphone permission
+  const checkPermission = useCallback(async () => {
+    try {
+      const result = await navigator.permissions.query({ name: 'microphone' as PermissionName });
+      if (result.state === 'denied') {
+        setPermissionState('denied');
+      } else if (result.state === 'prompt') {
+        setPermissionState('prompt');
+      } else {
+        setPermissionState(null);
+      }
+    } catch {
+      // Fallback: try to get permission
+      setPermissionState('prompt');
+    }
+  }, []);
+
+  // Handle takeover actions
+  const handleTakeoverStart = useCallback(async () => {
+    setRecordingState("arming");
+    
+    // Check permission first
+    await checkPermission();
+    
+    // 200ms arming state
+    setTimeout(() => {
+      if (selectedPrompt) {
+        posthog.capture('prompt_accepted', {
+          prompt_id: selectedPrompt.id,
+          prompt_title: selectedPrompt.title,
+          scenario: scenario,
+          intent: intent,
+        });
+      }
+      recorderRef.current?.start();
+      setRecordingState("recording");
+      setElapsed(0);
+      elapsedIntervalRef.current = window.setInterval(() => {
+        setElapsed((prev) => prev + 1);
+      }, 1000);
+    }, 200);
+  }, [selectedPrompt, scenario, intent, checkPermission]);
+
+  const handleTakeoverFinish = useCallback(() => {
+    recorderRef.current?.stop();
+    setShowTakeover(false);
+    setRecordingState("idle");
+    if (elapsedIntervalRef.current) {
+      window.clearInterval(elapsedIntervalRef.current);
+      elapsedIntervalRef.current = null;
+    }
+  }, []);
+
+  const handleTakeoverCancel = useCallback(() => {
+    if (recordingState === "recording") {
+      recorderRef.current?.stop();
+    }
+    setShowTakeover(false);
+    setRecordingState("idle");
+    setElapsed(0);
+    if (elapsedIntervalRef.current) {
+      window.clearInterval(elapsedIntervalRef.current);
+      elapsedIntervalRef.current = null;
+    }
+  }, [recordingState]);
+
+  // Cleanup interval on unmount
+  useEffect(() => {
+    return () => {
+      if (elapsedIntervalRef.current) {
+        window.clearInterval(elapsedIntervalRef.current);
+      }
+    };
+  }, []);
+
+  const handleRequestPermission = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach(track => track.stop()); // Stop immediately, we just needed permission
+      setPermissionState(null);
+      // Now start recording
+      handleTakeoverStart();
+    } catch {
+      setPermissionState('denied');
+    }
+  }, [handleTakeoverStart]);
 
 
   // Save session metrics when we have complete data
@@ -471,7 +548,6 @@ export default function RecordPage() {
           ...(user ? {} : { anon_id: anonId }), // Anonymous users include anon_id
           ...(scenario ? { scenario } : {}),
           ...(intent ? { intent } : {}),
-          ...(freestyleText ? { freestyle_text: freestyleText } : {}),
           ...(selectedPrompt ? { prompt_id: selectedPrompt.id, prompt_title: selectedPrompt.title } : { is_freestyle: true }),
         };
 
@@ -516,12 +592,16 @@ export default function RecordPage() {
           onPhaseChange={(p) => { 
             handlePhaseChange(p); 
             setIsRecording(p === "recording");
-            // Clear preparation state when recording starts
             if (p === "recording") {
-              setIsPreparing(false);
+              setRecordingState("recording");
+            } else if (p === "idle") {
+              setRecordingState("idle");
             }
           }}
           onBlobUrlChange={handleBlobUrlChange}
+          onStreamChange={(s) => {
+            setStream(s);
+          }}
           onTranscript={({ transcript, words, paragraphs, durationSec }) => {
             setTokens(words ?? null);
             setParagraphs(paragraphs ?? null);
@@ -531,7 +611,23 @@ export default function RecordPage() {
         />
       </div>
 
-      {!audioUrl && (
+      {/* Recording Takeover */}
+      <RecordingTakeover
+        isOpen={showTakeover}
+        prompt={selectedPrompt}
+        scenario={scenario}
+        intent={intent}
+        stream={stream}
+        recordingState={recordingState}
+        elapsed={elapsed}
+        onStart={handleTakeoverStart}
+        onFinish={handleTakeoverFinish}
+        onCancel={handleTakeoverCancel}
+        onRequestPermission={handleRequestPermission}
+        permissionState={permissionState}
+      />
+
+      {!audioUrl && !showTakeover && (
         <section className="relative mx-auto max-w-5xl px-6 min-h-[calc(100vh-4rem)] flex flex-col items-stretch justify-center gap-3 py-8">
           {generatedPrompts.length === 0 ? (
             <>
@@ -545,10 +641,10 @@ export default function RecordPage() {
                   <div className="mx-auto w-full max-w-[640px] mb-6">
                     <div className="text-center mb-4">
                       <p className="text-base sm:text-lg text-[color:rgba(11,11,12,0.75)] leading-relaxed">
-                        Let's help you sound more <span className="font-semibold text-[color:var(--intent-primary)]">{getIntentLabel(intent)}</span> for your <span className="font-semibold">{scenario}</span>.
+                        Let&apos;s help you sound more <span className="font-semibold text-[color:var(--intent-primary)]">{getIntentLabel(intent)}</span> for your <span className="font-semibold">{scenario}</span>.
                       </p>
                     </div>
-                    {/* Start/Stop button - appears when a prompt is selected */}
+                    {/* Start practice button - appears when a prompt is selected */}
                     {selectedPrompt && intent && (() => {
                       const theme = getIntentTheme(intent);
                       const primaryColor = theme?.primary || "#7C3AED";
@@ -559,77 +655,48 @@ export default function RecordPage() {
                           transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
                           className="flex flex-col items-center gap-2"
                         >
-                          {isPreparing ? (
-                            <motion.div
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              className="px-8 py-3.5 rounded-2xl text-sm font-medium text-[color:rgba(11,11,12,0.70)]"
-                            >
-                              <span>Getting ready...</span>
-                            </motion.div>
-                          ) : !isRecording ? (
-                            <motion.button
-                              type="button"
-                              onClick={() => {
-                                if (selectedPrompt.id === 'freestyle') {
-                                  handleFreestylePractice();
-                                } else {
-                                  handlePracticePrompt(selectedPrompt);
-                                }
+                          <motion.button
+                            type="button"
+                            onClick={() => {
+                              if (selectedPrompt.id === 'freestyle') {
+                                handleFreestylePractice();
+                              } else {
+                                handlePracticePrompt(selectedPrompt);
+                              }
+                            }}
+                            whileHover={{ 
+                              scale: 1.05,
+                              x: 4,
+                            }}
+                            whileTap={{ scale: 0.98 }}
+                            className="group px-8 py-3.5 rounded-2xl text-sm font-medium text-white transition-all duration-250 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 flex items-center justify-center gap-2"
+                            style={{ 
+                              backgroundColor: primaryColor,
+                              boxShadow: `0 4px 20px ${hexToRgba(primaryColor, 0.4)}`,
+                            }}
+                          >
+                            <span>Start practice</span>
+                            <motion.svg
+                              width="18"
+                              height="18"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              animate={{
+                                x: [0, 3, 0],
                               }}
-                              whileHover={{ 
-                                scale: 1.05,
-                                x: 4,
-                              }}
-                              whileTap={{ scale: 0.98 }}
-                              className="group px-8 py-3.5 rounded-2xl text-sm font-medium text-white transition-all duration-250 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 flex items-center justify-center gap-2"
-                              style={{ 
-                                backgroundColor: primaryColor,
-                                boxShadow: `0 4px 20px ${hexToRgba(primaryColor, 0.4)}`,
-                              }}
-                            >
-                              <span>Start practice</span>
-                              <motion.svg
-                                width="18"
-                                height="18"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2.5"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                animate={{
-                                  x: [0, 3, 0],
-                                }}
-                                transition={{
-                                  duration: 1.5,
-                                  repeat: Infinity,
-                                  ease: "easeInOut",
-                                }}
-                              >
-                                <path d="M5 12h14M12 5l7 7-7 7" />
-                              </motion.svg>
-                            </motion.button>
-                          ) : (
-                            <motion.button
-                              type="button"
-                              onClick={() => recorderRef.current?.stop()}
-                              whileHover={{ 
-                                scale: 1.05,
-                              }}
-                              whileTap={{ scale: 0.98 }}
-                              className="px-8 py-3.5 rounded-2xl text-sm font-medium text-white transition-all duration-250 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 flex items-center justify-center gap-2"
-                              style={{ 
-                                backgroundColor: "#EF4444",
-                                boxShadow: `0 4px 20px ${hexToRgba("#EF4444", 0.4)}`,
+                              transition={{
+                                duration: 1.5,
+                                repeat: Infinity,
+                                ease: "easeInOut",
                               }}
                             >
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                                <rect x="6" y="6" width="12" height="12" rx="2" fill="white"/>
-                              </svg>
-                              <span>Stop recording</span>
-                            </motion.button>
-                          )}
+                              <path d="M5 12h14M12 5l7 7-7 7" />
+                            </motion.svg>
+                          </motion.button>
                         </motion.div>
                       );
                     })()}
@@ -645,32 +712,24 @@ export default function RecordPage() {
                 onPracticePrompt={handlePracticePrompt}
                 onFreestylePractice={handleFreestylePractice}
                 isRecording={isRecording}
-                isPreparing={isPreparing}
+                isPreparing={false}
               />
-              
-              {/* Recording status - shown when recording */}
-              {isRecording && (
-                <div className="mx-auto w-full max-w-[640px] flex flex-col items-center gap-2">
-                  <span className="text-sm text-[color:rgba(11,11,12,0.6)]" aria-live="polite">Recording…</span>
-                </div>
-              )}
             </>
           )}
-          {/* Single, canonical recording control is handled by the embedded <Recorder /> via ref. */}
         </section>
       )}
 
       {audioUrl && (
-        <section className="relative mx-auto max-w-5xl px-6 py-8 grid grid-cols-1 gap-6">
+        <section className="relative mx-auto max-w-5xl px-4 sm:px-6 py-4 sm:py-6 md:py-8 grid grid-cols-1 gap-4 sm:gap-5 md:gap-6">
           <LoadingOverlay show={overlayVisible} label="Preparing your insights…" />
 
           {aiCoach && (
-            <div className="rounded-[20px] shadow-[0_12px_40px_rgba(0,0,0,0.06)] bg-white/90 backdrop-blur border border-[color:var(--muted-2)] p-5 sm:p-6">
-              <div className="text-[11px] uppercase tracking-[0.08em] text-[color:var(--bright-purple)] mb-2 font-medium">Coach Insight</div>
-              <div className="text-[22px] sm:text-[26px] font-extrabold leading-snug tracking-[-0.01em]">{aiCoach.headline}</div>
-              <div className="text-sm sm:text-base mt-2 text-[color:rgba(11,11,12,0.75)]">{aiCoach.subtext}</div>
+            <div className="rounded-xl sm:rounded-2xl md:rounded-[20px] shadow-[0_12px_40px_rgba(0,0,0,0.06)] bg-white/90 backdrop-blur border border-[color:var(--muted-2)] p-4 sm:p-5 md:p-6">
+              <div className="text-[10px] sm:text-[11px] uppercase tracking-[0.08em] text-[color:var(--bright-purple)] mb-2 font-medium">Coach Insight</div>
+              <div className="text-lg sm:text-xl md:text-[22px] lg:text-[26px] font-extrabold leading-snug tracking-[-0.01em]">{aiCoach.headline}</div>
+              <div className="text-xs sm:text-sm md:text-base mt-2 text-[color:rgba(11,11,12,0.75)]">{aiCoach.subtext}</div>
               {selectedPrompt && (
-                <div className="mt-3 text-xs text-[color:rgba(11,11,12,0.55)]">Prompt: {selectedPrompt.title}</div>
+                <div className="mt-2 sm:mt-3 text-[10px] sm:text-xs text-[color:rgba(11,11,12,0.55)]">Prompt: {selectedPrompt.title}</div>
               )}
             </div>
           )}
@@ -700,8 +759,8 @@ export default function RecordPage() {
           />
           
           {/* Privacy disclaimer */}
-          <div className="rounded-lg bg-gray-50 border border-gray-200 p-4">
-            <p className="text-xs text-gray-600 text-center">
+          <div className="rounded-lg sm:rounded-xl bg-gray-50 border border-gray-200 p-3 sm:p-4">
+            <p className="text-[10px] sm:text-xs text-gray-600 text-center leading-relaxed">
               🔒 Your audio was securely processed and immediately discarded. Nothing is stored.
             </p>
           </div>

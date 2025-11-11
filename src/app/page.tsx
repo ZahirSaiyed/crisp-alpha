@@ -100,14 +100,14 @@ export default function Page() {
   return (
     <main className="min-h-screen text-[color:var(--ink)]">
       {/* Hero / Scenario Input Section */}
-      <section className="relative pt-8 sm:pt-16 pb-8 sm:pb-12 min-h-[60vh] sm:min-h-[70vh] flex items-center">
+      <section className="relative pt-4 sm:pt-8 md:pt-16 pb-6 sm:pb-8 md:pb-12 min-h-[50vh] sm:min-h-[60vh] md:min-h-[70vh] flex items-center">
         {/* Subtle gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-br from-[color:var(--intent-persuasive)]/3 via-transparent to-[color:var(--intent-natural)]/2 opacity-40" />
         
         {/* Subtle divider line */}
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[color:var(--muted-2)] to-transparent opacity-30" />
         
-        <div className="relative z-10 mx-auto max-w-4xl px-4 sm:px-6 w-full">
+        <div className="relative z-10 mx-auto max-w-4xl px-4 sm:px-5 md:px-6 w-full">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -123,20 +123,20 @@ export default function Page() {
       <PhilosophyBlock />
 
       {/* Footer */}
-      <footer className="border-t border-[color:var(--muted-2)] py-16 sm:py-20 bg-gradient-to-b from-white to-[#FAFAF8]">
-        <div className="mx-auto max-w-4xl px-4 sm:px-6">
-          <div className="text-center space-y-8">
-            <h3 className="text-2xl sm:text-3xl font-bold text-[color:var(--ink)] leading-tight" style={{ fontFamily: 'var(--font-playfair), Georgia, serif' }}>
+      <footer className="border-t border-[color:var(--muted-2)] py-10 sm:py-14 md:py-16 lg:py-20 bg-gradient-to-b from-white to-[#FAFAF8]">
+        <div className="mx-auto max-w-4xl px-4 sm:px-5 md:px-6">
+          <div className="text-center space-y-5 sm:space-y-6 md:space-y-8">
+            <h3 className="text-xl sm:text-2xl md:text-3xl font-bold text-[color:var(--ink)] leading-tight px-2" style={{ fontFamily: 'var(--font-playfair), Georgia, serif' }}>
               Human clarity in an AI world.
             </h3>
             
             {/* Trust statement */}
-            <p className="text-base sm:text-lg text-[color:rgba(11,11,12,0.7)] max-w-2xl mx-auto leading-relaxed font-medium">
+            <p className="text-sm sm:text-base md:text-lg text-[color:rgba(11,11,12,0.7)] max-w-2xl mx-auto leading-relaxed font-medium px-2">
               Crisp is private, local-first, and built for humans — not algorithms.
             </p>
             
             {/* Email capture */}
-            <div className="max-w-md mx-auto pt-4">
+            <div className="max-w-md mx-auto pt-2 sm:pt-4 px-4">
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
@@ -149,18 +149,18 @@ export default function Page() {
                     e.currentTarget.reset();
                   }
                 }}
-                className="flex gap-2"
+                className="flex flex-col sm:flex-row gap-2 sm:gap-2"
               >
                 <input
                   type="email"
                   name="email"
                   placeholder="your@email.com"
                   required
-                  className="flex-1 px-4 py-3 rounded-xl border border-[color:var(--muted-2)] bg-white text-[color:var(--ink)] focus:outline-none focus:ring-2 focus:ring-[color:var(--intent-persuasive)]/30 focus:border-[color:var(--intent-persuasive)] transition-all duration-200"
+                  className="flex-1 px-4 py-2.5 sm:py-3 rounded-xl border border-[color:var(--muted-2)] bg-white text-[color:var(--ink)] text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[color:var(--intent-persuasive)]/30 focus:border-[color:var(--intent-persuasive)] transition-all duration-200"
                 />
                 <button
                   type="submit"
-                  className="px-6 py-3 rounded-xl font-medium bg-[#0B0B0C] text-white hover:bg-[#1a1a1b] transition-all duration-200"
+                  className="px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base font-medium bg-[#0B0B0C] text-white hover:bg-[#1a1a1b] transition-all duration-200 whitespace-nowrap"
                 >
                   Join waitlist
                 </button>

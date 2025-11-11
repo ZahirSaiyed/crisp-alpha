@@ -51,7 +51,7 @@ export default function PreparationOverlay({
                   Take a breath.
                 </p>
                 <p className="text-base sm:text-lg text-[color:rgba(11,11,12,0.70)]">
-                  You're ready when you are.
+                  You&apos;re ready when you are.
                 </p>
               </motion.div>
             ) : (
