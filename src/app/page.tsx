@@ -1,11 +1,16 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import posthog from "posthog-js";
-import ScenarioInput, { type Intent } from "../components/ScenarioInput";
+import { type Intent } from "../components/ScenarioInput";
 import PhilosophyBlock from "../components/PhilosophyBlock";
+import HeroSection from "../components/HeroSection";
+import ManifestoBlock from "../components/ManifestoBlock";
+import VisionBlock from "../components/VisionBlock";
+
+import Navbar from "../components/Navbar";
 
 export default function Page() {
   const router = useRouter();
@@ -59,12 +64,12 @@ export default function Page() {
       }
 
       const data = await response.json();
-      
+
       if (data.data && Array.isArray(data.data.prompts) && data.data.prompts.length > 0) {
         // Store prompts in sessionStorage for record page
         sessionStorage.setItem('crisp_generated_prompts', JSON.stringify(data.data.prompts));
         sessionStorage.setItem('crisp_prompt_source', data.data.source || 'unknown');
-        
+
         posthog.capture('prompt_generation_success', {
           source: data.data.source,
           scenario_length: scenarioText.length,
@@ -76,7 +81,7 @@ export default function Page() {
           scenario: scenarioText,
           intent: selectedIntent,
         });
-        
+
         router.push(`/record?${params.toString()}`);
       } else {
         throw new Error('Invalid response format');
@@ -98,78 +103,35 @@ export default function Page() {
   };
 
   return (
-    <main className="min-h-screen text-[color:var(--ink)]">
-      {/* Hero / Scenario Input Section */}
-      <section className="relative pt-4 sm:pt-8 md:pt-16 pb-6 sm:pb-8 md:pb-12 min-h-[50vh] sm:min-h-[60vh] md:min-h-[70vh] flex items-center">
-        {/* Subtle gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[color:var(--intent-persuasive)]/3 via-transparent to-[color:var(--intent-natural)]/2 opacity-40" />
-        
-        {/* Subtle divider line */}
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[color:var(--muted-2)] to-transparent opacity-30" />
-        
-        <div className="relative z-10 mx-auto max-w-4xl px-4 sm:px-5 md:px-6 w-full">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-            className="text-center"
-          >
-            <ScenarioInput onGenerate={handleGenerate} isLoading={isLoading} />
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Philosophy Block */}
+    <main className="min-h-screen bg-[var(--bg)] text-[var(--ink)] selection:bg-[var(--intent-persuasive)] selection:text-white">
+      <Navbar />
+      <HeroSection onGenerate={handleGenerate} isLoading={isLoading} />
+      <ManifestoBlock />
       <PhilosophyBlock />
+      <VisionBlock />
 
       {/* Footer */}
-      <footer className="border-t border-[color:var(--muted-2)] py-10 sm:py-14 md:py-16 lg:py-20 bg-gradient-to-b from-white to-[#FAFAF8]">
-        <div className="mx-auto max-w-4xl px-4 sm:px-5 md:px-6">
-          <div className="text-center space-y-5 sm:space-y-6 md:space-y-8">
-            <h3 className="text-xl sm:text-2xl md:text-3xl font-bold text-[color:var(--ink)] leading-tight px-2" style={{ fontFamily: 'var(--font-playfair), Georgia, serif' }}>
-              Human clarity in an AI world.
-            </h3>
-            
-            {/* Trust statement */}
-            <p className="text-sm sm:text-base md:text-lg text-[color:rgba(11,11,12,0.7)] max-w-2xl mx-auto leading-relaxed font-medium px-2">
-              Crisp is private, local-first, and built for humans — not algorithms.
-            </p>
-            
-            {/* Email capture */}
-            <div className="max-w-md mx-auto pt-2 sm:pt-4 px-4">
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  const formData = new FormData(e.currentTarget);
-                  const email = formData.get("email") as string;
-                  if (email) {
-                    posthog.capture("email_capture", { email });
-                    // TODO: Add to waitlist/email service
-                    alert("Thanks! We'll be in touch soon.");
-                    e.currentTarget.reset();
-                  }
-                }}
-                className="flex flex-col sm:flex-row gap-2 sm:gap-2"
-              >
-                <input
-                  type="email"
-                  name="email"
-                  placeholder="your@email.com"
-                  required
-                  className="flex-1 px-4 py-2.5 sm:py-3 rounded-xl border border-[color:var(--muted-2)] bg-white text-[color:var(--ink)] text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[color:var(--intent-persuasive)]/30 focus:border-[color:var(--intent-persuasive)] transition-all duration-200"
-                />
-                <button
-                  type="submit"
-                  className="px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base font-medium bg-[#0B0B0C] text-white hover:bg-[#1a1a1b] transition-all duration-200 whitespace-nowrap"
-                >
-                  Join waitlist
-                </button>
-              </form>
-            </div>
+      <footer className="border-t border-[var(--muted-2)] py-20 bg-[var(--bg-warm)]">
+        <div className="mx-auto max-w-4xl px-6 text-center space-y-8">
+          <h3 className="text-2xl font-bold text-[var(--ink)]" style={{ fontFamily: 'var(--font-serif)' }}>
+            Human clarity in an AI world.
+          </h3>
+
+          <p className="text-[var(--ink-light)] max-w-xl mx-auto">
+            Crisp is private, local-first, and built for humans — not algorithms.
+          </p>
+
+          {/* Sign Up CTA */}
+          <div className="pt-4">
+            <Link
+              href="/signup"
+              className="inline-block px-8 py-4 rounded-full font-bold bg-[var(--ink)] text-white hover:bg-black transition-all shadow-lg hover:shadow-xl hover:-translate-y-1"
+            >
+              Sign Up for Free
+            </Link>
           </div>
         </div>
       </footer>
-
     </main>
   );
 }

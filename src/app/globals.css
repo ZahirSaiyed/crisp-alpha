@@ -2,51 +2,64 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
-  
-  /* Intent-based color palette */
-  --intent-decisive: #F59E0B; /* Amber */
-  --intent-natural: #0EA5E9; /* Sky */
-  --intent-calm: #10B981; /* Sage/Green */
-  --intent-persuasive: #7C3AED; /* Violet */
-  --intent-empathetic: #FB7185; /* Coral */
-  
-  /* Base colors - neutral ivory and graphite */
-  --bg: #FAFAF9; /* Neutral ivory */
-  --bg-warm: #F7F4EF;
-  --ink: #0B0B0C; /* Graphite */
-  
+  --foreground: #0B0B0C;
+
+  /* Intent-based color palette - Refined */
+  --intent-decisive: #F59E0B;
+  /* Amber */
+  --intent-natural: #0EA5E9;
+  /* Sky */
+  --intent-calm: #10B981;
+  /* Sage/Green */
+  --intent-persuasive: #7C3AED;
+  /* Violet */
+  --intent-empathetic: #FB7185;
+  /* Coral */
+
+  /* Base colors - Sharper Monochrome */
+  --bg: #FFFFFF;
+  /* Pure White */
+  --bg-warm: #FAFAF9;
+  /* Very subtle warmth */
+  --ink: #050505;
+  /* Deepest Black */
+  --ink-light: #404040;
+  /* Dark Grey */
+
   /* Muted colors */
-  --muted-1: #EDEEF2;
-  --muted-2: #D9DBE1;
-  
+  --muted-1: #F4F4F5;
+  --muted-2: #E4E4E7;
+
   /* Status colors */
   --ok: #12B886;
   --warn: #FFB800;
   --bad: #FF5C5C;
-  
+
   /* Feedback accent colors */
-  --accent-grn: #10B981; /* Green for strengths */
-  --bright-purple: #7C3AED; /* Purple for recommendations */
-  
+  --accent-grn: #10B981;
+  --bright-purple: #7C3AED;
+
   /* Rings */
   --ring-idle: #e5e7eb;
   --ring-active: var(--intent-persuasive);
   --ring-success: var(--intent-calm);
   --ring-warn: var(--warn);
-  
-  /* Motion - sub-300ms only */
-  --motion-duration: 250ms;
-  --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  
+
+  /* Motion */
+  --motion-duration: 300ms;
+  --motion-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  /* Snappier ease */
+
   /* Radius & spacing */
-  --radius-lg: 16px;
+  --radius-lg: 12px;
+  /* Slightly tighter radius */
   --radius-full: 9999px;
-  --space-hero-y: clamp(56px, 16vh, 144px);
-  
+  --space-hero-y: clamp(64px, 20vh, 160px);
+
   /* Fonts */
   --font-display: var(--font-inter);
   --font-body: var(--font-inter);
+  --font-serif: var(--font-playfair);
 }
 
 @theme inline {
@@ -64,14 +77,14 @@
 }
 
 /* Base typography */
+/* Base typography */
 html {
-  background: linear-gradient(to bottom, #FAFAF8, #F7F4EF, #FAFAF8);
+  background-color: var(--bg);
   height: 100%;
 }
 
 body {
-  background: linear-gradient(to bottom, #FAFAF8, #F7F4EF, #FAFAF8);
-  background-attachment: fixed;
+  background-color: var(--bg);
   color: var(--ink);
   font-family: var(--font-body), system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
   min-height: 100vh;
@@ -198,11 +211,11 @@ html {
   html {
     scroll-behavior: auto;
   }
-  
+
   .feature-card {
     transition: none;
   }
-  
+
   * {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;

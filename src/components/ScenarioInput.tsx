@@ -59,7 +59,7 @@ export default function ScenarioInput({ onGenerate, isLoading = false }: Scenari
 
     // Start animation when unfocused and empty
     setIsTyping(true);
-    
+
     const type = () => {
       // Check again if we should stop
       if (isFocused || scenario.trim().length > 0 || isLoading) {
@@ -70,7 +70,7 @@ export default function ScenarioInput({ onGenerate, isLoading = false }: Scenari
 
       // Get current example from ref (so it updates when we change examples)
       const currentExample = TYPING_EXAMPLES[currentExampleIndexRef.current];
-      
+
       if (!currentExample) {
         // Safety check - reset if example is invalid
         currentExampleIndexRef.current = 0;
@@ -172,17 +172,11 @@ export default function ScenarioInput({ onGenerate, isLoading = false }: Scenari
   const canGenerate = scenario.trim().length > 0 && selectedIntent !== null && !isLoading;
 
   return (
-    <div className="w-full max-w-[640px] mx-auto space-y-6 sm:space-y-7 md:space-y-8">
+    <div className="w-full space-y-6">
       {/* Main scenario input */}
-      <div className="space-y-3 sm:space-y-4 md:space-y-5">
-        <label htmlFor="scenario-input" className="block text-center">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-[color:var(--ink)] mb-3 sm:mb-4 leading-tight tracking-tight px-2" style={{ fontFamily: 'var(--font-playfair), Georgia, serif' }}>
-            What moment are you preparing for?
-          </h2>
-          <p className="text-sm sm:text-base md:text-lg text-[color:rgba(11,11,12,0.65)] font-medium leading-relaxed px-2">
-            Share your scenario
-          </p>
-        </label>
+      <div className="relative group">
+        <div className={`absolute inset-0 bg-gradient-to-r from-[var(--intent-persuasive)] to-[var(--intent-natural)] rounded-2xl opacity-0 transition-opacity duration-300 ${isFocused ? 'opacity-10' : 'group-hover:opacity-5'}`} />
+
         <div className="relative">
           <input
             id="scenario-input"
@@ -193,53 +187,36 @@ export default function ScenarioInput({ onGenerate, isLoading = false }: Scenari
               hasTrackedConfigured.current = false; // Reset tracking on change
             }}
             onFocus={(e) => {
-              // Stop animation immediately
               setIsFocused(true);
               setIsTyping(false);
               setDisplayText("");
               if (typingTimeoutRef.current) {
                 clearTimeout(typingTimeoutRef.current);
               }
-              // Handle border styling
-              if (selectedIntent) {
-                const theme = getIntentTheme(selectedIntent);
-                e.currentTarget.style.borderColor = theme?.primary || "#7C3AED";
-                e.currentTarget.style.boxShadow = `0 0 0 3px ${theme?.bgTint || "rgba(124, 58, 237, 0.05)"}`;
-              }
             }}
             onBlur={(e) => {
               setIsFocused(false);
-              // Handle border styling
-              if (selectedIntent && scenario.trim().length > 0) {
-                const theme = getIntentTheme(selectedIntent);
-                e.currentTarget.style.borderColor = theme?.primary || "#7C3AED";
-                e.currentTarget.style.boxShadow = `0 0 0 3px ${theme?.bgTint || "rgba(124, 58, 237, 0.05)"}`;
-              } else {
-                e.currentTarget.style.borderColor = "var(--muted-2)";
-                e.currentTarget.style.boxShadow = "none";
-              }
             }}
             placeholder=""
-            className="w-full px-4 sm:px-5 py-3.5 sm:py-4 md:py-5 rounded-xl border-2 bg-white text-[color:var(--ink)] text-sm sm:text-base md:text-lg font-medium focus:outline-none transition-all duration-200 shadow-sm"
-          style={
-            selectedIntent && scenario.trim().length > 0
-              ? {
-                  borderColor: getIntentTheme(selectedIntent)?.primary || "#7C3AED",
-                  boxShadow: `0 0 0 3px ${getIntentTheme(selectedIntent)?.bgTint || "rgba(124, 58, 237, 0.05)"}`,
-                }
-              : {
-                  borderColor: "var(--muted-2)",
-                }
-          }
+            className="w-full px-6 py-5 rounded-2xl border-2 bg-white text-[var(--ink)] text-lg sm:text-xl font-medium focus:outline-none transition-all duration-200 shadow-sm placeholder:text-[var(--muted-2)]"
+            style={{
+              borderColor: selectedIntent && scenario.trim().length > 0
+                ? getIntentTheme(selectedIntent)?.primary || "#7C3AED"
+                : isFocused ? "var(--ink)" : "var(--muted-2)",
+              boxShadow: selectedIntent && scenario.trim().length > 0
+                ? `0 0 0 4px ${getIntentTheme(selectedIntent)?.bgTint || "rgba(124, 58, 237, 0.05)"}`
+                : isFocused ? "0 4px 20px rgba(0,0,0,0.05)" : "none"
+            }}
             disabled={isLoading}
             aria-label="What moment are you preparing for?"
           />
+
           {/* Typing animation overlay */}
           {!isFocused && !scenario && isTyping && (
-            <div className="absolute inset-0 px-4 sm:px-5 py-3.5 sm:py-4 md:py-5 flex items-center pointer-events-none">
-              <span className="text-sm sm:text-base md:text-lg font-medium text-[color:rgba(11,11,12,0.4)] leading-normal">
+            <div className="absolute inset-0 px-6 py-5 flex items-center pointer-events-none">
+              <span className="text-lg sm:text-xl font-medium text-[var(--ink-light)] opacity-40 leading-normal">
                 {displayText}
-                <span className="inline-block w-0.5 h-5 bg-[color:var(--intent-persuasive)] ml-1.5 animate-pulse align-middle" style={{ marginTop: '2px' }} />
+                <span className="inline-block w-0.5 h-6 bg-[var(--intent-persuasive)] ml-1.5 animate-pulse align-middle" style={{ marginTop: '-2px' }} />
               </span>
             </div>
           )}
@@ -250,76 +227,73 @@ export default function ScenarioInput({ onGenerate, isLoading = false }: Scenari
       <AnimatePresence>
         {showIntents && (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.25 }}
-            className="space-y-3 sm:space-y-4 md:space-y-5"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            className="overflow-hidden"
           >
-            <p className="text-center text-sm sm:text-base md:text-lg font-semibold text-[color:var(--ink)] leading-relaxed px-2">
-              How do you want to sound?
-            </p>
-            <div className="grid grid-cols-3 items-stretch gap-2 sm:gap-3 md:gap-4 px-2">
-              {INTENTS.map((intent) => {
-                const isSelected = selectedIntent === intent.value;
-                const theme = getIntentTheme(intent.value);
-                const primaryColor = theme?.primary || "#7C3AED";
-                return (
-                  <button
-                    key={intent.value}
-                    type="button"
-                    onClick={() => handleIntentSelect(intent.value)}
-                    disabled={isLoading}
-                    aria-pressed={isSelected}
-                    style={isSelected ? { backgroundColor: primaryColor } : {}}
-                    className={`px-2 sm:px-3 md:px-5 lg:px-7 py-2 sm:py-2.5 md:py-3 lg:py-3.5 rounded-lg sm:rounded-xl text-xs sm:text-sm md:text-base font-semibold transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50 disabled:cursor-not-allowed leading-relaxed ${
-                      isSelected
-                        ? "text-white shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
-                        : "bg-white border-2 border-[color:var(--muted-2)] text-[color:var(--ink)] hover:border-opacity-50 shadow-sm"
-                    }`}
-                    onMouseEnter={(e) => {
-                      if (!isSelected && theme) {
-                        e.currentTarget.style.borderColor = primaryColor;
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isSelected) {
-                        e.currentTarget.style.borderColor = "";
-                      }
-                    }}
-                  >
-                    <div className="flex flex-col items-center gap-1">
-                      <span>{intent.label}</span>
-                      <span className={`text-xs ${isSelected ? "text-white/80" : "text-[color:rgba(11,11,12,0.6)]"}`}>
-                        {intent.description}
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
+            <div className="pt-2 space-y-4">
+              <p className="text-center text-sm font-semibold text-[var(--ink-light)] uppercase tracking-wide">
+                How do you want to sound?
+              </p>
+              <div className="grid grid-cols-3 gap-3 sm:gap-4">
+                {INTENTS.map((intent) => {
+                  const isSelected = selectedIntent === intent.value;
+                  const theme = getIntentTheme(intent.value);
+                  const primaryColor = theme?.primary || "#7C3AED";
+                  return (
+                    <button
+                      key={intent.value}
+                      type="button"
+                      onClick={() => handleIntentSelect(intent.value)}
+                      disabled={isLoading}
+                      className={`p-4 rounded-xl text-left transition-all duration-200 border-2 relative overflow-hidden group ${isSelected
+                          ? "border-transparent shadow-lg scale-[1.02]"
+                          : "border-[var(--muted-2)] bg-white hover:border-[var(--ink-light)]"
+                        }`}
+                      style={isSelected ? { backgroundColor: primaryColor } : {}}
+                    >
+                      <div className="relative z-10 flex flex-col gap-1">
+                        <span className={`font-bold text-base ${isSelected ? "text-white" : "text-[var(--ink)]"}`}>
+                          {intent.label}
+                        </span>
+                        <span className={`text-xs ${isSelected ? "text-white/90" : "text-[var(--ink-light)]"}`}>
+                          {intent.description}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* Generate button */}
-      <div className="flex justify-center pt-4 sm:pt-5 md:pt-6">
-        <button
-          type="button"
-          onClick={handleGenerate}
-          disabled={!canGenerate || isLoading}
-          className={`px-8 sm:px-10 md:px-12 py-3 sm:py-4 md:py-5 rounded-full text-base sm:text-lg md:text-xl font-bold transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 leading-tight tracking-tight ${
-            canGenerate && !isLoading
-              ? "bg-[color:var(--intent-persuasive)] text-white shadow-[0_6px_20px_rgba(124,58,237,0.3)] hover:shadow-[0_8px_28px_rgba(124,58,237,0.4)] hover:scale-105"
-              : isLoading
-              ? "bg-[color:var(--intent-persuasive)] text-white shadow-[0_6px_20px_rgba(124,58,237,0.3)]"
-              : "bg-gray-200 text-gray-400 cursor-not-allowed"
-          }`}
-          aria-label="Show me what to practice"
-        >
-          {isLoading ? "Preparing..." : "Show me what to practice"}
-        </button>
-      </div>
+      <AnimatePresence>
+        {selectedIntent && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            className="flex justify-center pt-4"
+          >
+            <button
+              type="button"
+              onClick={handleGenerate}
+              disabled={!canGenerate || isLoading}
+              className={`px-10 py-4 rounded-full text-lg font-bold transition-all duration-300 shadow-xl hover:shadow-2xl hover:-translate-y-1 ${canGenerate && !isLoading
+                  ? "bg-[var(--ink)] text-white"
+                  : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                }`}
+            >
+              {isLoading ? "Preparing..." : "Start Training"}
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
