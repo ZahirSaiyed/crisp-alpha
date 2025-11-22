@@ -186,7 +186,7 @@ export default function ScenarioInput({ onGenerate, isLoading = false }: Scenari
               setScenario(e.target.value);
               hasTrackedConfigured.current = false; // Reset tracking on change
             }}
-            onFocus={(e) => {
+            onFocus={() => {
               setIsFocused(true);
               setIsTyping(false);
               setDisplayText("");
@@ -194,7 +194,7 @@ export default function ScenarioInput({ onGenerate, isLoading = false }: Scenari
                 clearTimeout(typingTimeoutRef.current);
               }
             }}
-            onBlur={(e) => {
+            onBlur={() => {
               setIsFocused(false);
             }}
             placeholder=""
