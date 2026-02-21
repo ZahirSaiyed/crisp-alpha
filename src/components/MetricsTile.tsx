@@ -66,28 +66,28 @@ export default function MetricsTile({
   }, [wpm, pauseCount, fillerCount, talkTimeSec, mostCommonFiller, approximate]);
 
   return (
-    <div className="rounded-[20px] shadow-[0_4px_20px_rgba(11,11,12,0.08),_0_2px_8px_rgba(11,11,12,0.04)] bg-white/95 backdrop-blur border border-[color:var(--muted-2)] p-5">
-      <div className="text-[11px] uppercase tracking-[0.08em] text-[color:var(--bright-purple)] mb-4 font-medium">Your Speaking Metrics</div>
+    <div className="rounded-[var(--radius-lg)] shadow-[0_4px_20px_rgba(11,11,12,0.08),_0_2px_8px_rgba(11,11,12,0.04)] bg-white/95 backdrop-blur border border-[var(--muted-2)] p-5">
+      <div className="text-[11px] uppercase tracking-[0.08em] text-[var(--bright-purple)] mb-4 font-medium">Your Speaking Metrics</div>
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {chips.slice(0, 5).map((c) => (
           <div
             key={c.key}
-            className="bg-white border border-[color:var(--muted-2)] rounded-lg p-3 text-left"
+            className="bg-white border border-[var(--muted-2)] rounded-[var(--radius-lg)] p-3 text-left"
             title={c.tooltip}
           >
-            <div className="text-[10px] uppercase tracking-[0.08em] text-[color:rgba(11,11,12,0.6)] mb-1">{c.label}</div>
-            <div className="text-xl font-bold text-[color:var(--ink)] mb-1">{c.value}</div>
-            <div className="text-[11px] text-[color:rgba(11,11,12,0.6)]">{c.suffix || c.tooltip?.split('.')[0]}</div>
+            <div className="text-[10px] uppercase tracking-[0.08em] text-[var(--ink-light)] mb-1">{c.label}</div>
+            <div className="text-xl font-bold text-[var(--ink)] mb-1">{c.value}</div>
+            <div className="text-[11px] text-[var(--ink-light)]">{c.suffix || c.tooltip?.split('.')[0]}</div>
           </div>
         ))}
         {chips.length === 0 && (
-          <div className="col-span-2 sm:col-span-5 bg-white border border-[color:var(--muted-2)] rounded-lg p-3 text-center">
-            <div className="text-[11px] text-[color:rgba(11,11,12,0.6)]">Initializing metrics...</div>
+          <div className="col-span-2 sm:col-span-5 bg-white border border-[var(--muted-2)] rounded-[var(--radius-lg)] p-3 text-center">
+            <div className="text-[11px] text-[var(--ink-light)]">Initializing metrics...</div>
           </div>
         )}
       </div>
       {approximate && (
-        <div className="mt-2 text-[11px] text-[color:rgba(11,11,12,0.55)]">~ approximate — refines as transcript completes</div>
+        <div className="mt-2 text-[11px] text-[var(--ink-light)]">~ approximate. Refines as transcript completes.</div>
       )}
     </div>
   );

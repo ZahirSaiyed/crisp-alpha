@@ -1316,7 +1316,7 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
             <div className="rounded-[20px] px-4 sm:px-6 py-4 sm:py-5 bg-gradient-to-r from-[var(--bright-purple)]/12 via-[var(--bright-sky)]/12 to-[var(--bright-lime)]/12 shadow-[0_12px_40px_rgba(0,0,0,0.06)]">
               <div className="flex items-center gap-3">
                 <div className="text-xl">🟢</div>
-                <p className="text-base sm:text-lg font-semibold text-[color:var(--ink)]">You sounded confident and engaging — a strong foundation to build on.</p>
+                <p className="text-base sm:text-lg font-semibold text-[color:var(--ink)]">You sounded confident and engaging. A strong foundation to build on.</p>
               </div>
             </div>
           </div>
@@ -1380,8 +1380,8 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
                     const wpm = calculateWpm();
                     if (!wpm) return "We’ll estimate your pace in words per minute.";
                     if (wpm < 110) return "Steady, measured delivery. Try adding energy before key points.";
-                    if (wpm <= 170) return "✅ Clear, confident pace — easy to follow.";
-                    return "Fast — add a brief pause before big ideas so they land.";
+                    if (wpm <= 170) return "✅ Clear, confident pace. Easy to follow.";
+                    return "Fast. Add a brief pause before big ideas so they land.";
                   })()}
                   <div className="text-xs mt-1 text-[color:rgba(11,11,12,0.6)]">👉 Slow slightly before key points to add punch.</div>
                 </div>
@@ -1410,9 +1410,9 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
                       {(() => {
                         const v = energy?.variability ?? null;
                         if (v == null) return "We analyze changes in loudness to spot emphasis.";
-                        if (v >= 0.3) return "Alive — strong emphasis kept attention.";
-                        if (v < 0.15) return "Flat — add emphasis on key points.";
-                        return "Moderate — vary tone to punch important ideas.";
+                        if (v >= 0.3) return "Alive. Strong emphasis kept attention.";
+                        if (v < 0.15) return "Flat. Add emphasis on key points.";
+                        return "Moderate. Vary tone to punch important ideas.";
                       })()}
                       <div className="text-xs mt-1 text-[color:rgba(11,11,12,0.6)]">👉 Great emphasis! Keep stressing key words to hold the room.</div>
                     </div>
@@ -1437,7 +1437,7 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
                    </span>
                  );
                })()}</div>
-              <div className="text-xs text-[color:rgba(11,11,12,0.6)] mt-1">⚖️ Solid balance. Use silence more strategically — pause after big points.</div>
+              <div className="text-xs text-[color:rgba(11,11,12,0.6)] mt-1">⚖️ Solid balance. Use silence more strategically. Pause after big points.</div>
             </div>
 
             {/* Tile: Expressiveness (Pitch) */}
@@ -1454,9 +1454,9 @@ const Recorder = React.forwardRef<RecorderHandle, { stickyMobileCTA?: boolean; a
                   {(() => {
                     const range = energy?.pitch?.rangeHz ?? null;
                     if (range == null) return "Pitch range hints at vocal variety.";
-                    if (range >= 80) return "Expressive — engaging tone.";
-                    if (range >= 40) return "Moderate — add a bit more range.";
-                    return "Flat — vary pitch to avoid monotone.";
+                    if (range >= 80) return "Expressive. Engaging tone.";
+                    if (range >= 40) return "Moderate. Add a bit more range.";
+                    return "Flat. Vary pitch to avoid monotone.";
                   })()}
                   <div className="text-xs mt-1 text-[color:rgba(11,11,12,0.6)]">👉 Try a rising tone at questions to invite curiosity.</div>
                 </div>

@@ -34,22 +34,22 @@ export default function MetricDelta({
   }
 
   return (
-    <div className="bg-white border border-[color:var(--muted-2)] rounded-lg p-4">
-      <div className="text-[10px] uppercase tracking-[0.08em] text-[color:rgba(11,11,12,0.6)] mb-2">
+    <div className="bg-white border border-[var(--muted-2)] rounded-[var(--radius-lg)] p-4">
+      <div className="text-[10px] uppercase tracking-[0.08em] text-[var(--ink-light)] mb-2">
         {label}
       </div>
       <div className="flex items-baseline gap-2">
-        <div className="text-2xl font-bold text-[color:var(--ink)]">
+        <div className="text-2xl font-bold text-[var(--ink)]">
           {formatValue(current)}
         </div>
         {previous !== 0 && (
           <div
             className={`text-sm font-medium flex items-center gap-1 ${
               isImprovement
-                ? 'text-green-600'
+                ? 'text-[var(--ok)]'
                 : percentChange === 0
-                ? 'text-[color:rgba(11,11,12,0.5)]'
-                : 'text-red-600'
+                ? 'text-[var(--ink-light)]'
+                : 'text-[var(--bad)]'
             }`}
           >
             {isImprovement && percentChange !== 0 && '↑'}
@@ -59,7 +59,7 @@ export default function MetricDelta({
           </div>
         )}
       </div>
-      <div className="text-[11px] text-[color:rgba(11,11,12,0.5)] mt-1">
+      <div className="text-[11px] text-[var(--ink-light)] mt-1">
         vs. first session
       </div>
     </div>

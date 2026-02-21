@@ -92,9 +92,9 @@ function SectionBlock({
     <div>
       <div className="flex items-center gap-2 mb-2">
         <div className="w-6 h-6 rounded-full flex items-center justify-center text-[13px]" style={{ background: accent, color: "white" }}>{icon}</div>
-        <h3 className="text-[14px] font-semibold tracking-[-0.01em] text-[color:var(--ink)]">{title}</h3>
+        <h3 className="text-[14px] font-semibold tracking-[-0.01em] text-[var(--ink)]">{title}</h3>
       </div>
-      <ul className="pl-0 space-y-2 text-[14px] leading-6 text-[color:rgba(11,11,12,0.85)]">
+      <ul className="pl-0 space-y-2 text-[14px] leading-6 text-[var(--ink-light)]">
         {items.map((it, i) => (
           <li key={i} className="flex items-start gap-3">
             <span className="mt-[7px] inline-block w-[8px] h-[8px] rounded-full flex-shrink-0" style={{ background: accent }} />
@@ -211,33 +211,33 @@ export default function FeedbackTile({
   const sections = useMemo(() => json ? ({ strengths: json.strengths || [], weaknesses: json.weaknesses || [], recommendations: json.recommendations || [] }) : parseSections(text || ""), [json, text]);
 
   return (
-    <section className="relative rounded-[20px] shadow-[0_12px_40px_rgba(0,0,0,0.06)] bg-white/90 backdrop-blur border border-[color:var(--muted-2)] p-5 sm:p-6">
+    <section className="relative rounded-[var(--radius-lg)] shadow-[0_12px_40px_rgba(0,0,0,0.06)] bg-white/90 backdrop-blur border border-[var(--muted-2)] p-5 sm:p-6">
       <div className="flex items-center justify-between mb-2">
-        <div className="text-[11px] uppercase tracking-[0.08em] text-[color:var(--bright-purple)] font-medium">Expert Feedback</div>
+        <div className="text-[11px] uppercase tracking-[0.08em] text-[var(--bright-purple)] font-medium">Expert Feedback</div>
       </div>
 
       {loading && (
-        <div className="flex items-center gap-2 text-[13px] text-[color:rgba(11,11,12,0.65)]">
-          <span className="inline-block w-4 h-4 rounded-full border-2 border-[color:var(--muted-2)] border-t-[color:var(--bright-purple)] animate-spin" />
+        <div className="flex items-center gap-2 text-[13px] text-[var(--ink-light)]">
+          <span className="inline-block w-4 h-4 rounded-full border-2 border-[var(--muted-2)] border-t-[var(--bright-purple)] animate-spin" />
           Generating feedback…
         </div>
       )}
       {error && (
-        <div className="text-[13px] text-[color:#8A1C1C]">{error}</div>
+        <div className="text-[13px] text-[var(--bad)]">{error}</div>
       )}
       {!loading && !error && (
         sections ? (
           <div className={`grid gap-4 ${compact ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-3"}`}>
             <SectionBlock title="Strengths" icon="✅" items={sections.strengths} accent="var(--accent-grn)" />
-            <SectionBlock title="Weaknesses" icon="⚠️" items={sections.weaknesses} accent="#F59E0B" />
+            <SectionBlock title="Weaknesses" icon="⚠️" items={sections.weaknesses} accent="var(--intent-decisive)" />
             <SectionBlock title="Recommendations" icon="🛠️" items={sections.recommendations} accent="var(--bright-purple)" />
           </div>
         ) : (
-          <div className={`prose prose-sm max-w-none text-[color:rgba(11,11,12,0.85)] ${compact ? "space-y-2" : "space-y-3"}`}>
+          <div className={`prose prose-sm max-w-none text-[var(--ink-light)] ${compact ? "space-y-2" : "space-y-3"}`}>
             {text ? (
               <div className="whitespace-pre-wrap leading-6">{text}</div>
             ) : (
-              <div className="text-[13px] text-[color:rgba(11,11,12,0.65)]">No feedback yet.</div>
+              <div className="text-[13px] text-[var(--ink-light)]">No feedback yet.</div>
             )}
           </div>
         )

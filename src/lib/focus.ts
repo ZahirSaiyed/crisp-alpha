@@ -132,7 +132,7 @@ export function selectFocus(goal: Goal, s: DeliverySummary, opts?: { transcript?
   return {
     focus: "ClosingEnergy",
     drill: {
-      title: "Strong delivery — let’s lock it in",
+      title: "Strong delivery. Let’s lock it in.",
       durationSec: 30,
       instruction: "Re-read your final line once more, with the same confident pace.",
       segment: "close",

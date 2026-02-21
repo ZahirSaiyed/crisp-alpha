@@ -34,8 +34,8 @@ export default function ProgressChart({ sessions }: ProgressChartProps) {
 
   if (chartData.length === 0) {
     return (
-      <div className="rounded-[20px] shadow-[0_4px_20px_rgba(11,11,12,0.08)] bg-white border border-[color:var(--muted-2)] p-6">
-        <div className="text-center text-[color:rgba(11,11,12,0.6)]">
+      <div className="rounded-[var(--radius-lg)] shadow-[0_4px_20px_rgba(11,11,12,0.08)] bg-white border border-[var(--muted-2)] p-6">
+        <div className="text-center text-[var(--ink-light)]">
           No sessions yet. Start recording to see your progress!
         </div>
       </div>
@@ -47,11 +47,11 @@ export default function ProgressChart({ sessions }: ProgressChartProps) {
     if (active && payload && payload.length) {
       const data = payload[0].payload
       return (
-        <div className="bg-white border border-[color:var(--muted-2)] rounded-lg shadow-lg p-3">
-          <p className="text-xs text-[color:rgba(11,11,12,0.6)] mb-1">
+        <div className="bg-white border border-[var(--muted-2)] rounded-[var(--radius-lg)] shadow-lg p-3">
+          <p className="text-xs text-[var(--ink-light)] mb-1">
             Session {data.session} • {data.timestamp}
           </p>
-          <p className="text-sm font-semibold text-[color:var(--bright-purple)]">
+          <p className="text-sm font-semibold text-[var(--bright-purple)]">
             {Math.round(data.confidence * 100)}% confidence
           </p>
         </div>
@@ -61,8 +61,8 @@ export default function ProgressChart({ sessions }: ProgressChartProps) {
   }
 
   return (
-    <div className="rounded-[20px] shadow-[0_4px_20px_rgba(11,11,12,0.08)] bg-white border border-[color:var(--muted-2)] p-6">
-      <div className="text-[11px] uppercase tracking-[0.08em] text-[color:var(--bright-purple)] mb-4 font-medium">
+    <div className="rounded-[var(--radius-lg)] shadow-[0_4px_20px_rgba(11,11,12,0.08)] bg-white border border-[var(--muted-2)] p-6">
+      <div className="text-[11px] uppercase tracking-[0.08em] text-[var(--bright-purple)] mb-4 font-medium">
         Confidence Over Time
       </div>
       
@@ -101,7 +101,7 @@ export default function ProgressChart({ sessions }: ProgressChartProps) {
         </LineChart>
       </ResponsiveContainer>
 
-      <div className="mt-4 text-xs text-[color:rgba(11,11,12,0.55)] text-center">
+      <div className="mt-4 text-xs text-[var(--ink-light)] text-center">
         {chartData.length} session{chartData.length !== 1 ? 's' : ''} recorded
       </div>
     </div>

@@ -16,14 +16,14 @@ export default function LoadingOverlay({ show, label = "Preparing your insightsâ
           transition={{ duration: 0.18 }}
         >
           <motion.div
-            className="w-full h-full rounded-[20px] bg-white/90 backdrop-blur"
+            className="w-full h-full rounded-[var(--radius-lg)] bg-white/90 backdrop-blur"
             initial={{ backdropFilter: "blur(0px)" as unknown as number }}
             animate={{ backdropFilter: "blur(6px)" as unknown as number }}
             exit={{ backdropFilter: "blur(0px)" as unknown as number }}
             transition={{ duration: 0.18 }}
           />
           <motion.div
-            className="absolute flex items-center gap-3 text-[14px] text-[color:rgba(11,11,12,0.85)]"
+            className="absolute flex items-center gap-3 text-[14px] text-[var(--ink)]"
             initial={{ scale: 0.96, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.96, opacity: 0 }}

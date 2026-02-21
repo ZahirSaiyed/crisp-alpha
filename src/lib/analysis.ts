@@ -84,4 +84,87 @@ export function detectFillerCounts(words: Array<{ word: string }>): { total: num
     if (v > max) { max = v; mostCommon = k; }
   }
   return { total, byType, mostCommon };
+}
+
+/**
+ * Detect CAR (Context → Action → Result) structure in transcript
+ * Returns a score 0-1 indicating how well the transcript follows CAR structure
+ */
+export function detectCARStructure(transcript: string): number {
+  if (!transcript || transcript.trim().length === 0) return 0;
+
+  const lower = transcript.toLowerCase();
+  
+  // Context indicators (situation, background, problem)
+  const contextPatterns = [
+    /\b(when|while|during|at|in|the situation|the problem|the challenge|we had|i was|the team|our company)\b/gi,
+    /\b(context|background|situation|problem|challenge|issue)\b/gi,
+  ];
+  
+  // Action indicators (what was done)
+  const actionPatterns = [
+    /\b(i|we|i decided|we decided|i chose|we chose|i implemented|we implemented|i built|we built|i created|we created)\b/gi,
+    /\b(action|solution|approach|method|strategy|implemented|built|created|developed|designed)\b/gi,
+    /\b(so|then|next|after that|as a result|to solve this)\b/gi,
+  ];
+  
+  // Result indicators (outcome, impact, metrics)
+  const resultPatterns = [
+    /\b(result|outcome|impact|improved|increased|decreased|reduced|achieved|accomplished|delivered)\b/gi,
+    /\b(by|to|from|percent|%|times|faster|slower|more|less)\b/gi,
+    /\b(the result|the outcome|as a result|this led to|this resulted in)\b/gi,
+  ];
+
+  let contextScore = 0;
+  let actionScore = 0;
+  let resultScore = 0;
+
+  // Check for context indicators
+  for (const pattern of contextPatterns) {
+    const matches = lower.match(pattern);
+    if (matches) {
+      contextScore += matches.length;
+    }
+  }
+
+  // Check for action indicators
+  for (const pattern of actionPatterns) {
+    const matches = lower.match(pattern);
+    if (matches) {
+      actionScore += matches.length;
+    }
+  }
+
+  // Check for result indicators
+  for (const pattern of resultPatterns) {
+    const matches = lower.match(pattern);
+    if (matches) {
+      resultScore += matches.length;
+    }
+  }
+
+  // Normalize scores (presence of all three components = good structure)
+  // Simple heuristic: if we have all three components, structure is present
+  const hasContext = contextScore > 0;
+  const hasAction = actionScore > 0;
+  const hasResult = resultScore > 0;
+
+  if (hasContext && hasAction && hasResult) {
+    // All components present - score based on balance
+    const total = contextScore + actionScore + resultScore;
+    const balance = 1 - Math.abs(contextScore / total - 0.33) - Math.abs(actionScore / total - 0.33) - Math.abs(resultScore / total - 0.33);
+    return Math.max(0.5, Math.min(1, 0.5 + balance * 0.5));
+  } else if (hasContext && hasAction) {
+    // Missing result
+    return 0.4;
+  } else if (hasAction && hasResult) {
+    // Missing context
+    return 0.4;
+  } else if (hasContext && hasResult) {
+    // Missing action
+    return 0.3;
+  } else {
+    // Missing multiple components
+    return 0.1;
+  }
 } 

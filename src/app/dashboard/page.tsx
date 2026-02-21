@@ -95,12 +95,12 @@ export default function DashboardPage() {
 
   if (error) {
     return (
-      <main className="min-h-screen bg-gradient-to-b from-[#F9F9FB] to-white text-[color:var(--ink)] flex items-center justify-center">
+      <main className="min-h-screen bg-[var(--bg-warm)] text-[var(--ink)] flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-600 mb-4">{error}</p>
+          <p className="text-[var(--bad)] mb-4">{error}</p>
           <button
             onClick={() => router.push('/record')}
-            className="px-6 py-2 rounded-full bg-[color:var(--bright-purple)] text-white hover:opacity-90"
+            className="px-6 py-2 rounded-full bg-[var(--intent-persuasive)] text-white font-medium hover:opacity-90 transition-opacity"
           >
             Go to Record
           </button>
@@ -115,27 +115,27 @@ export default function DashboardPage() {
   const firstSession = sessions[sessions.length - 1]
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-[#F9F9FB] to-white text-[color:var(--ink)]">
+    <main className="min-h-screen bg-[var(--bg-warm)] text-[var(--ink)]">
       <header className="mx-auto max-w-5xl px-6 py-8">
-        <h1 className="text-3xl font-bold text-[color:var(--ink)]">Your Progress</h1>
-        <p className="text-[color:rgba(11,11,12,0.65)] mt-2">
+        <h1 className="text-3xl font-bold text-[var(--ink)] tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>Your Progress</h1>
+        <p className="text-[var(--ink-light)] mt-2">
           Track your speaking confidence over time
         </p>
       </header>
 
       <section className="mx-auto max-w-5xl px-6 pb-12 grid gap-6">
         {sessions.length === 0 ? (
-          <div className="rounded-[20px] shadow-[0_4px_20px_rgba(11,11,12,0.08)] bg-white border border-[color:var(--muted-2)] p-12 text-center">
+          <div className="rounded-[var(--radius-lg)] shadow-[0_4px_20px_rgba(11,11,12,0.08)] bg-white border border-[var(--muted-2)] p-12 text-center">
             <div className="text-5xl mb-4">🎤</div>
-            <h2 className="text-xl font-bold text-[color:var(--ink)] mb-2">
+            <h2 className="text-xl font-bold text-[var(--ink)] mb-2 tracking-tight">
               No sessions yet
             </h2>
-            <p className="text-[color:rgba(11,11,12,0.6)] mb-6">
+            <p className="text-[var(--ink-light)] mb-6">
               Record your first session to start tracking your progress
             </p>
             <button
               onClick={() => router.push('/record')}
-              className="px-6 py-3 rounded-full bg-gradient-to-r from-[color:var(--bright-purple)] to-[color:#9D7FFF] text-white font-semibold shadow-[0_4px_12px_rgba(122,92,255,0.25)] hover:shadow-[0_6px_20px_rgba(122,92,255,0.35)] transition-all duration-200 transform hover:scale-105"
+              className="cta-bottom-purple px-6 py-3 font-semibold transition-all duration-200 hover:-translate-y-0.5"
             >
               Start Recording
             </button>
@@ -172,8 +172,8 @@ export default function DashboardPage() {
 
             {/* Encouraging message */}
             {hasMultipleSessions && latestSession && firstSession && (
-              <div className="rounded-lg bg-gradient-to-r from-[color:var(--bright-purple)]/10 to-[color:#9D7FFF]/10 border border-[color:var(--bright-purple)]/20 p-6">
-                <p className="text-[color:var(--ink)] font-medium">
+              <div className="rounded-[var(--radius-lg)] bg-gradient-to-r from-[var(--intent-persuasive)]/10 to-[var(--bright-purple)]/10 border border-[var(--intent-persuasive)]/20 p-6">
+                <p className="text-[var(--ink)] font-medium">
                   {latestSession.confidence_score > firstSession.confidence_score
                     ? `🎉 You're ${Math.round((latestSession.confidence_score - firstSession.confidence_score) * 100)}% more confident than your first session!`
                     : "Keep practicing! Confidence builds with every session."}
@@ -185,7 +185,7 @@ export default function DashboardPage() {
             <div className="text-center">
               <button
                 onClick={() => router.push('/record')}
-                className="px-8 py-4 rounded-full bg-[color:var(--intent-persuasive)] text-white font-semibold text-base shadow-[0_4px_12px_rgba(124,58,237,0.35)] hover:shadow-[0_6px_20px_rgba(124,58,237,0.45)] transition-all duration-200 transform hover:scale-105"
+                className="cta-bottom-purple px-8 py-4 font-semibold text-base transition-all duration-200 hover:-translate-y-0.5"
               >
                 Record Another Session
               </button>

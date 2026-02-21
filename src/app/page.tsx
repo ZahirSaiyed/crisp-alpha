@@ -113,12 +113,12 @@ export default function Page() {
       {/* Footer */}
       <footer className="border-t border-[var(--muted-2)] py-20 bg-[var(--bg-warm)]">
         <div className="mx-auto max-w-4xl px-6 text-center space-y-8">
-          <h3 className="text-2xl font-bold text-[var(--ink)]" style={{ fontFamily: 'var(--font-serif)' }}>
+          <h3 className="text-2xl font-bold text-[var(--ink)] display-headline">
             Human clarity in an AI world.
           </h3>
 
-          <p className="text-[var(--ink-light)] max-w-xl mx-auto">
-            Crisp is private, local-first, and built for humans — not algorithms.
+          <p className="text-[var(--ink-light)] max-w-xl mx-auto text-base leading-relaxed">
+            Crisp is private and local-first. Built for you, not for algorithms.
           </p>
 
           {/* Sign Up CTA */}

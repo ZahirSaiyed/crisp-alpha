@@ -6,7 +6,7 @@ const STEPS = [
   {
     number: "01",
     title: "Define the Moment",
-    description: "Tell Crisp what you're preparing for—a pitch, a difficult conversation, or a speech. Set your intent: Decisive, Natural, or Calm.",
+    description: "Tell Crisp what you're preparing for: a pitch, a difficult conversation, or a speech. Set your intent: Decisive, Natural, or Calm.",
   },
   {
     number: "02",

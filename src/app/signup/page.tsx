@@ -21,9 +21,9 @@ export default function SignUpPage() {
   // Show loading state while checking auth
   if (authLoading) {
     return (
-      <main className="min-h-screen bg-gradient-to-br from-[#F9F9FB] via-white to-[#F7F4EF] flex items-center justify-center">
+      <main className="min-h-screen bg-[var(--bg)] flex items-center justify-center">
         <div className="text-center">
-          <p className="text-sm text-[color:rgba(11,11,12,0.6)]">Loading...</p>
+          <p className="text-sm text-[var(--ink-light)]">Loading...</p>
         </div>
       </main>
     )
@@ -46,26 +46,28 @@ export default function SignUpPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-[#F9F9FB] via-white to-[#F7F4EF] text-[color:var(--ink)] flex items-center justify-center px-6 py-20">
+    <main className="min-h-screen bg-[var(--bg)] text-[var(--ink)] flex items-center justify-center px-6 py-20 relative overflow-hidden">
+      {/* Optional ambient blob for parity with hero */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-gradient-to-b from-[var(--muted-1)]/40 to-transparent rounded-full blur-3xl opacity-60 pointer-events-none" />
       <motion.div
-        className="w-full max-w-md"
+        className="w-full max-w-md relative z-10"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
       >
-        <div className="bg-white rounded-[24px] shadow-[0_24px_64px_rgba(0,0,0,0.15)] p-8 sm:p-10">
+        <div className="bg-white rounded-2xl shadow-[0_24px_64px_rgba(0,0,0,0.12)] border border-[var(--muted-2)] p-8 sm:p-10">
           {/* Header */}
           <div className="text-center mb-8">
             <Link 
               href="/"
-              className="inline-block display-headline text-[color:var(--bright-purple)] text-3xl font-extrabold drop-shadow-[0_4px_16px_rgba(122,92,255,0.25)] tracking-[-0.01em] mb-4"
+              className="inline-block display-headline text-[var(--bright-purple)] text-3xl font-extrabold drop-shadow-[0_4px_16px_rgba(122,92,255,0.25)] tracking-[-0.01em] mb-4"
             >
               Crisp
             </Link>
-            <h1 className="text-2xl sm:text-3xl font-bold text-[color:var(--ink)] mb-2 tracking-[-0.01em]">
+            <h1 className="text-2xl sm:text-3xl font-bold text-[var(--ink)] mb-2 tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>
               Save your sessions and track your growth
             </h1>
-            <p className="text-sm sm:text-base text-[color:rgba(11,11,12,0.7)]">
+            <p className="text-sm sm:text-base text-[var(--ink-light)]">
               Sign up with Google to get started
             </p>
           </div>
@@ -74,7 +76,7 @@ export default function SignUpPage() {
           <button
             onClick={handleSignIn}
             disabled={loading}
-            className="w-full px-6 py-3.5 rounded-full bg-white border-2 border-[color:var(--muted-2)] text-[color:var(--ink)] font-medium hover:border-[color:var(--bright-purple)] hover:shadow-[0_4px_16px_rgba(122,92,255,0.15)] transition-all duration-200 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed mb-6"
+            className="w-full px-6 py-3.5 rounded-full bg-white border-2 border-[var(--muted-2)] text-[var(--ink)] font-medium hover:border-[var(--intent-persuasive)] hover:shadow-[0_4px_16px_rgba(124,58,237,0.15)] transition-all duration-200 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed mb-6"
           >
             {loading ? (
               <span>Signing in...</span>
@@ -105,7 +107,7 @@ export default function SignUpPage() {
 
           {/* Trust builders */}
           <div className="text-center mb-6">
-            <p className="text-xs sm:text-sm text-[color:rgba(11,11,12,0.65)] font-medium tracking-wide">
+            <p className="text-xs sm:text-sm text-[var(--ink-light)] font-medium tracking-wide">
               Free forever • No credit card required • Private & secure
             </p>
           </div>
@@ -113,24 +115,24 @@ export default function SignUpPage() {
           {/* Divider */}
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-[color:var(--muted-2)]"></div>
+              <div className="w-full border-t border-[var(--muted-2)]"></div>
             </div>
             <div className="relative flex justify-center text-xs">
-              <span className="bg-white px-4 text-[color:rgba(11,11,12,0.5)]">or</span>
+              <span className="bg-white px-4 text-[var(--ink-light)]">or</span>
             </div>
           </div>
 
           {/* Footer links */}
           <div className="text-center space-y-2">
-            <p className="text-sm text-[color:rgba(11,11,12,0.6)]">
+            <p className="text-sm text-[var(--ink-light)]">
               Already have an account?<br />
-              <span className="text-[color:var(--bright-purple)] font-medium">
+              <span className="text-[var(--bright-purple)] font-medium">
                 Just sign in with Google above
               </span>
             </p>
             <Link
               href="/privacy"
-              className="block text-xs text-[color:rgba(11,11,12,0.5)] hover:text-[color:var(--ink)] transition-colors mt-4"
+              className="block text-xs text-[var(--ink-light)] hover:text-[var(--ink)] transition-colors mt-4"
             >
               Privacy Policy
             </Link>
@@ -141,7 +143,7 @@ export default function SignUpPage() {
         <div className="text-center mt-6">
           <Link
             href="/"
-            className="text-sm text-[color:rgba(11,11,12,0.6)] hover:text-[color:var(--ink)] transition-colors"
+            className="text-sm text-[var(--ink-light)] hover:text-[var(--ink)] transition-colors"
           >
             ← Back to home
           </Link>

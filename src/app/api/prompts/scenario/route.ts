@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { GoogleGenAI } from '@google/genai'
-import { ENV, SKIP_GEMINI_PROMPTS } from '../../../../lib/env'
+import { ENV, GEMINI_MODEL, SKIP_GEMINI_PROMPTS } from '../../../../lib/env'
 import { 
   badRequest, 
   serverError, 
@@ -238,7 +238,7 @@ export async function POST(req: NextRequest) {
         
         const ai = new GoogleGenAI({ apiKey: ENV.GEMINI_API_KEY })
         const result = await ai.models.generateContent({
-          model: 'gemini-2.0-flash-exp',
+          model: GEMINI_MODEL,
           contents: promptText,
         })
         
@@ -254,7 +254,7 @@ export async function POST(req: NextRequest) {
           logError('JSON parse failed', { error: parseError, requestId, rawTextPreview: rawText.substring(0, 500) })
         }
 
-        logApiCall('Gemini', 'gemini-2.0-flash-exp', 200, Date.now() - startTime, requestId)
+        logApiCall('Gemini', GEMINI_MODEL, 200, Date.now() - startTime, requestId)
 
         if (parsedJson && typeof parsedJson === 'object') {
           const structuredData = parsedJson as Record<string, unknown>

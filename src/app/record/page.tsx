@@ -579,7 +579,7 @@ export default function RecordPage() {
   }, [hasAnyMetrics, durationSec, tokens?.length, wpm, user, anonId, scenario, intent]);
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-[#F9F9FB] to-white text-[color:var(--ink)]">
+    <main className="min-h-screen bg-[var(--bg-warm)] text-[var(--ink)]">
 
       {/* Hidden recorder to handle programmatic start/stop. UI suppressed via props and visually hidden wrapper. */}
       <div className="mx-auto w-full max-w-[560px]">
@@ -640,8 +640,8 @@ export default function RecordPage() {
                 {scenario && intent && (
                   <div className="mx-auto w-full max-w-[640px] mb-6">
                     <div className="text-center mb-4">
-                      <p className="text-base sm:text-lg text-[color:rgba(11,11,12,0.75)] leading-relaxed">
-                        Let&apos;s help you sound more <span className="font-semibold text-[color:var(--intent-primary)]">{getIntentLabel(intent)}</span> for your <span className="font-semibold">{scenario}</span>.
+                      <p className="text-base sm:text-lg text-[var(--ink-light)] leading-relaxed">
+                        Let&apos;s help you sound more <span className="font-semibold" style={{ color: 'var(--intent-primary)' }}>{getIntentLabel(intent)}</span> for your <span className="font-semibold text-[var(--ink)]">{scenario}</span>.
                       </p>
                     </div>
                     {/* Start practice button - appears when a prompt is selected */}
@@ -652,7 +652,7 @@ export default function RecordPage() {
                         <motion.div
                           initial={{ opacity: 0, y: -10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
                           className="flex flex-col items-center gap-2"
                         >
                           <motion.button
@@ -724,12 +724,12 @@ export default function RecordPage() {
           <LoadingOverlay show={overlayVisible} label="Preparing your insights…" />
 
           {aiCoach && (
-            <div className="rounded-xl sm:rounded-2xl md:rounded-[20px] shadow-[0_12px_40px_rgba(0,0,0,0.06)] bg-white/90 backdrop-blur border border-[color:var(--muted-2)] p-4 sm:p-5 md:p-6">
-              <div className="text-[10px] sm:text-[11px] uppercase tracking-[0.08em] text-[color:var(--bright-purple)] mb-2 font-medium">Coach Insight</div>
-              <div className="text-lg sm:text-xl md:text-[22px] lg:text-[26px] font-extrabold leading-snug tracking-[-0.01em]">{aiCoach.headline}</div>
-              <div className="text-xs sm:text-sm md:text-base mt-2 text-[color:rgba(11,11,12,0.75)]">{aiCoach.subtext}</div>
+            <div className="rounded-[var(--radius-lg)] shadow-[0_12px_40px_rgba(0,0,0,0.06)] bg-white/90 backdrop-blur border border-[var(--muted-2)] p-4 sm:p-5 md:p-6">
+              <div className="text-[10px] sm:text-[11px] uppercase tracking-[0.08em] text-[var(--bright-purple)] mb-2 font-medium">Coach Insight</div>
+              <div className="text-lg sm:text-xl md:text-[22px] lg:text-[26px] font-extrabold leading-snug tracking-[-0.01em] text-[var(--ink)]" style={{ fontFamily: 'var(--font-display)' }}>{aiCoach.headline}</div>
+              <div className="text-xs sm:text-sm md:text-base mt-2 text-[var(--ink-light)]">{aiCoach.subtext}</div>
               {selectedPrompt && (
-                <div className="mt-2 sm:mt-3 text-[10px] sm:text-xs text-[color:rgba(11,11,12,0.55)]">Prompt: {selectedPrompt.title}</div>
+                <div className="mt-2 sm:mt-3 text-[10px] sm:text-xs text-[var(--ink-light)]">Prompt: {selectedPrompt.title}</div>
               )}
             </div>
           )}
@@ -759,8 +759,8 @@ export default function RecordPage() {
           />
           
           {/* Privacy disclaimer */}
-          <div className="rounded-lg sm:rounded-xl bg-gray-50 border border-gray-200 p-3 sm:p-4">
-            <p className="text-[10px] sm:text-xs text-gray-600 text-center leading-relaxed">
+          <div className="rounded-[var(--radius-lg)] bg-[var(--muted-1)] border border-[var(--muted-2)] p-3 sm:p-4">
+            <p className="text-[10px] sm:text-xs text-[var(--ink-light)] text-center leading-relaxed">
               🔒 Your audio was securely processed and immediately discarded. Nothing is stored.
             </p>
           </div>

@@ -7,7 +7,7 @@ const BELIEFS = [
     "We believe the mind and voice are a single instrument.",
     "We reject the culture of verbal clutter.",
     "We believe confidence is the outcome of clarity.",
-    "We believe ideas deserve form — structured, simple, and strong.",
+    "We believe ideas deserve form: structured, simple, and strong.",
     "We believe speaking well is not extroversion. It is precision.",
     "We believe pressure does not create clarity. It exposes it.",
     "We believe silence is not emptiness. Silence is space to think.",
