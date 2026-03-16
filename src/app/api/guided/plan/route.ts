@@ -118,7 +118,7 @@ function tryParseJson(raw: string): unknown | null {
   return null;
 }
 
-function createFallbackPlan(jobDescription: string): PrepPath {
+function createFallbackPlan(): PrepPath {
   // Simple fallback: extract a few generic signals
   const signals = [
     {
@@ -203,7 +203,7 @@ export async function POST(req: NextRequest) {
 
     // Skip Gemini if SKIP_GEMINI_PROMPTS is enabled (for local testing)
     if (SKIP_GEMINI_PROMPTS) {
-      const fallbackPlan = createFallbackPlan(job_description)
+      const fallbackPlan = createFallbackPlan()
       return ok(fallbackPlan, requestId)
     }
 
@@ -264,7 +264,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Fallback: return simple plan
-    const fallbackPlan = createFallbackPlan(job_description)
+    const fallbackPlan = createFallbackPlan()
     return ok(fallbackPlan, requestId)
     
   } catch (error) {

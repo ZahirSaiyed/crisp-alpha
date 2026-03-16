@@ -6,8 +6,8 @@ import { getRequestId } from '@/lib/context'
 import { detectFillerCounts, detectCARStructure } from '@/lib/analysis'
 import { GoogleGenAI } from '@google/genai'
 import { ENV, GEMINI_MODEL } from '@/lib/env'
-import { logApiCall, logError } from '@/lib/log'
-import { ModuleScoresSchema, ModuleFeedbackSchema, type ModuleScores, type ModuleFeedback } from '@/lib/guided/types'
+import { logError } from '@/lib/log'
+import { ModuleFeedbackSchema, type ModuleScores, type ModuleFeedback } from '@/lib/guided/types'
 import { NUDGE_TYPES } from '@/lib/guided/constants'
 
 const CompleteModuleRunSchema = z.object({
@@ -173,9 +173,9 @@ export async function POST(
     }
 
     const prepPath = session.prep_path as { modules: Array<{ type: string; constraints?: { rubric_focus?: string } }> };
-    const module = prepPath.modules[validated.data.module_index];
+    const prepModule = prepPath.modules[validated.data.module_index];
 
-    if (!module) {
+    if (!prepModule) {
       return badRequest('Invalid module index', 'INVALID_MODULE_INDEX', requestId);
     }
 
@@ -183,7 +183,7 @@ export async function POST(
     let scores: ModuleScores | undefined;
     let feedback: ModuleFeedback | undefined;
 
-    if (module.type === 'coach_rep' && validated.data.transcript) {
+    if (prepModule.type === 'coach_rep' && validated.data.transcript) {
       const words = validated.data.transcript.split(/\s+/).map((word, idx) => ({ word, start: idx * 0.5, end: (idx + 1) * 0.5 }));
       const fillers = detectFillerCounts(words);
       const fillerRate = words.length > 0 ? fillers.total / words.length : 0;
@@ -199,7 +199,7 @@ export async function POST(
       };
 
       // Generate feedback
-      const rubricFocus = module.constraints?.rubric_focus as 'clarity' | 'structure' | 'specificity' | undefined;
+      const rubricFocus = prepModule.constraints?.rubric_focus as 'clarity' | 'structure' | 'specificity' | undefined;
       feedback = await generateFeedback(validated.data.transcript, rubricFocus);
 
       // Detect nudge
@@ -212,7 +212,7 @@ export async function POST(
     // Create or update module run
     const runData = {
       guided_session_id: sessionId,
-      module_type: module.type as 'signal_map' | 'coach_rep',
+      module_type: prepModule.type as 'signal_map' | 'coach_rep',
       module_index: validated.data.module_index,
       status: 'completed' as const,
       attempt: validated.data.attempt,
