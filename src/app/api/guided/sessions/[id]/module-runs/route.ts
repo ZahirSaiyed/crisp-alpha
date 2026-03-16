@@ -129,10 +129,10 @@ ${transcript.substring(0, 2000)}
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const requestId = getRequestId();
-  const sessionId = params.id;
+  const { id: sessionId } = await params;
 
   try {
     if (!isSupabaseConfigured()) {
