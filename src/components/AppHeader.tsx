@@ -46,9 +46,6 @@ export default function AppHeader() {
   // Hide header on landing page
   if (pathname === "/") return null;
 
-  // Use neutral header (ink/ink-light) on all non-landing pages for design-guide consistency
-  const logoClass =
-    "display-headline text-[var(--ink)] text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-[-0.02em]";
   const linkClass =
     "text-sm font-medium text-[var(--ink-light)] hover:text-[var(--ink)] transition-colors";
   const signUpClass =
@@ -56,35 +53,36 @@ export default function AppHeader() {
   const avatarClass =
     "w-8 h-8 rounded-full bg-[var(--ink)] flex items-center justify-center text-white text-sm font-medium hover:opacity-90 transition-all duration-200";
 
+  // Page-appropriate secondary nav links
+  const isRecordPage = pathname === "/record";
+  const isResultsOrCoach = pathname.startsWith("/results") || pathname.startsWith("/coach");
+  const isDashboard = pathname === "/dashboard";
+
   return (
     <div className="w-full pt-4 sm:pt-6 pb-4 sm:pb-6 relative z-50">
       <header
         className="mx-auto w-full max-w-[95%] sm:max-w-2xl md:max-w-4xl lg:max-w-5xl px-6 py-3 rounded-full bg-white/80 backdrop-blur-md border border-[var(--muted-2)] shadow-lg shadow-black/5 relative"
       >
         <div className="flex items-center gap-6 sm:gap-8 min-h-[2.5rem]">
-          <Link href="/" className="flex items-center">
-            <span className={logoClass}>
-              Crisp
-            </span>
+          <Link href="/" className="font-bold text-[var(--ink)] tracking-tight hover:opacity-70 transition-opacity">
+            Crisp.
           </Link>
           <div className="ml-auto flex items-center gap-5 sm:gap-6">
-            {user && (
-              <Link
-                href="/dashboard"
-                className={linkClass}
-              >
+            {isResultsOrCoach && (
+              <Link href="/" className={linkClass}>
+                New practice
+              </Link>
+            )}
+            {isDashboard && (
+              <Link href="/" className={linkClass}>
+                Practice
+              </Link>
+            )}
+            {isRecordPage && user && (
+              <Link href="/dashboard" className={linkClass}>
                 Dashboard
               </Link>
             )}
-            <Link
-              href="/privacy"
-              className={`flex items-center gap-1.5 ${linkClass} hidden sm:flex`}
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-              </svg>
-              <span>Privacy</span>
-            </Link>
             {!user && (
               <Link
                 href="/signup"

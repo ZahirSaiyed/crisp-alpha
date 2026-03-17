@@ -2,6 +2,17 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
+function tryParseJson(raw: string): unknown | null {
+  try { return JSON.parse(raw) } catch {}
+  const codeBlockMatch = raw.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/)
+  if (codeBlockMatch?.[1]) { try { return JSON.parse(codeBlockMatch[1]) } catch {} }
+  const jsonMatch = raw.match(/\{[\s\S]*\}/)
+  if (jsonMatch) { try { return JSON.parse(jsonMatch[0]) } catch {} }
+  const cleaned = raw.replace(/^[^{]*/, '').replace(/[^}]*$/, '').trim()
+  if (cleaned.startsWith('{') && cleaned.endsWith('}')) { try { return JSON.parse(cleaned) } catch {} }
+  return null
+}
+
 type Token = { word: string; start?: number; end?: number };
 
 type Sections = {
@@ -82,11 +93,13 @@ function SectionBlock({
   icon,
   items,
   accent,
+  cursorOnLast,
 }: {
   title: string;
   icon: string;
   items: string[];
   accent: string;
+  cursorOnLast?: boolean;
 }) {
   return (
     <div>
@@ -98,7 +111,12 @@ function SectionBlock({
         {items.map((it, i) => (
           <li key={i} className="flex items-start gap-3">
             <span className="mt-[7px] inline-block w-[8px] h-[8px] rounded-full flex-shrink-0" style={{ background: accent }} />
-            <span className="flex-1">{renderWithBold(it)}</span>
+            <span className="flex-1">
+              {renderWithBold(it)}
+              {cursorOnLast && i === items.length - 1 && (
+                <span className="inline-block w-[2px] h-[13px] bg-[var(--bright-purple)] ml-[1px] align-middle animate-pulse" />
+              )}
+            </span>
           </li>
         ))}
       </ul>
@@ -120,6 +138,8 @@ export default function FeedbackTile({
   onLoadingChange?: (loading: boolean) => void;
 }) {
   const [loading, setLoading] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamingText, setStreamingText] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [text, setText] = useState<string | null>(null);
   const [json, setJson] = useState<Structured | null>(null);
@@ -153,50 +173,87 @@ export default function FeedbackTile({
       lastKeyRef.current = payloadKey || lastKeyRef.current;
 
       setLoading(true);
+      setIsStreaming(false);
+      setStreamingText("");
       onLoadingChangeRef.current?.(true);
       setError(null);
       setJson(null);
+      setText(null);
       try {
         const res = await fetch("/api/feedback", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ ...payload, maxWords: 500 }),
         });
-        const raw = await res.json().catch(() => ({} as unknown));
         if (!res.ok) {
+          const raw = await res.json().catch(() => ({} as unknown));
           const j = (raw && typeof raw === "object") ? (raw as Record<string, unknown>) : {};
           throw new Error((j.message as string) || (j.error as string) || `Request failed: ${res.status}`);
         }
-        const data = (raw && typeof raw === "object" && "data" in (raw as Record<string, unknown>))
-          ? (raw as { data: unknown }).data as Record<string, unknown>
-          : (raw as Record<string, unknown>);
         if (aborted) return;
-        if (data && typeof data === "object" && (Array.isArray((data as Record<string, unknown>).strengths) || (data as Record<string, unknown>).coachInsight || (data as Record<string, unknown>).improvedAnswer)) {
-          const s: Structured = {
-            strengths: Array.isArray((data as Record<string, unknown>).strengths) ? (data as Record<string, unknown>).strengths as string[] : [],
-            weaknesses: Array.isArray((data as Record<string, unknown>).weaknesses) ? (data as Record<string, unknown>).weaknesses as string[] : [],
-            recommendations: Array.isArray((data as Record<string, unknown>).recommendations) ? (data as Record<string, unknown>).recommendations as string[] : [],
-          };
-          const coachInsight = (data as Record<string, unknown>).coachInsight;
-          if (coachInsight && typeof coachInsight === "object") {
-            s.coachInsight = coachInsight as NonNullable<Structured["coachInsight"]>;
+
+        // Switch from spinner to streaming text display
+        setLoading(false);
+        onLoadingChangeRef.current?.(false);
+        setIsStreaming(true);
+
+        const reader = res.body!.getReader();
+        const decoder = new TextDecoder();
+        let buf = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (aborted) { reader.cancel(); break; }
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          setStreamingText(buf);
+        }
+        buf += decoder.decode(); // flush
+
+        if (aborted) return;
+        setIsStreaming(false);
+
+        // Try to parse accumulated text as JSON
+        const parsed = tryParseJson(buf.trim());
+        if (parsed && typeof parsed === "object") {
+          const data = parsed as Record<string, unknown>;
+          if (Array.isArray(data.strengths) || Array.isArray(data.weaknesses) || Array.isArray(data.recommendations)) {
+            const s: Structured = {
+              strengths: Array.isArray(data.strengths) ? data.strengths as string[] : [],
+              weaknesses: Array.isArray(data.weaknesses) ? data.weaknesses as string[] : [],
+              recommendations: Array.isArray(data.recommendations) ? data.recommendations as string[] : [],
+            };
+            if (data.coachInsight && typeof data.coachInsight === "object") {
+              s.coachInsight = data.coachInsight as NonNullable<Structured["coachInsight"]>;
+            }
+            if (typeof data.improvedAnswer === "string") {
+              s.improvedAnswer = data.improvedAnswer;
+            }
+            setJson(s);
+            onStructuredRef.current?.(s);
+            return;
           }
-          const improvedAnswer = (data as Record<string, unknown>).improvedAnswer;
-          if (typeof improvedAnswer === "string") {
-            s.improvedAnswer = improvedAnswer;
-          }
-          setJson(s);
-          onStructuredRef.current?.(s);
-        } else {
-          const fb = (data && typeof data === "object") ? (data as Record<string, unknown>).feedback : undefined;
-          setText(typeof fb === "string" ? fb : "");
+        }
+        // Prose format — set text and emit structured sections if parseable
+        setText(buf);
+        const proseSections = parseSections(buf);
+        if (proseSections) {
+          onStructuredRef.current?.({
+            strengths: proseSections.strengths,
+            weaknesses: proseSections.weaknesses,
+            recommendations: proseSections.recommendations,
+          });
         }
       } catch (e) {
         const msg = getErrorMessage(e);
-        if (!aborted) setError(msg);
+        if (!aborted) {
+          setIsStreaming(false);
+          setError(msg);
+        }
       } finally {
         if (!aborted) {
           setLoading(false);
+          setIsStreaming(false);
           onLoadingChangeRef.current?.(false);
         }
       }
@@ -210,6 +267,20 @@ export default function FeedbackTile({
 
   const sections = useMemo(() => json ? ({ strengths: json.strengths || [], weaknesses: json.weaknesses || [], recommendations: json.recommendations || [] }) : parseSections(text || ""), [json, text]);
 
+  // Derived state for progressive rendering during streaming
+  const streamingSections = useMemo(() =>
+    isStreaming ? parseSections(streamingText) : null,
+    [isStreaming, streamingText]
+  );
+
+  const lastStreamingSection = useMemo(() => {
+    if (!streamingSections) return null;
+    for (const key of ["recommendations", "weaknesses", "strengths"] as const) {
+      if (streamingSections[key].length > 0) return key;
+    }
+    return null;
+  }, [streamingSections]);
+
   return (
     <section className="relative rounded-[var(--radius-lg)] shadow-[0_12px_40px_rgba(0,0,0,0.06)] bg-white/90 backdrop-blur border border-[var(--muted-2)] p-5 sm:p-6">
       <div className="flex items-center justify-between mb-2">
@@ -222,10 +293,29 @@ export default function FeedbackTile({
           Generating feedback…
         </div>
       )}
+      {isStreaming && !streamingSections && (
+        <div className="flex items-center gap-2 text-[13px] text-[var(--ink-light)]">
+          <span className="inline-block w-4 h-4 rounded-full border-2 border-[var(--muted-2)] border-t-[var(--bright-purple)] animate-spin" />
+          Analyzing your delivery…
+        </div>
+      )}
+      {isStreaming && streamingSections && (
+        <div className={`grid gap-4 ${compact ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-3"}`}>
+          {streamingSections.strengths.length > 0 && (
+            <SectionBlock title="Strengths" icon="✅" items={streamingSections.strengths} accent="var(--accent-grn)" cursorOnLast={lastStreamingSection === "strengths"} />
+          )}
+          {streamingSections.weaknesses.length > 0 && (
+            <SectionBlock title="Weaknesses" icon="⚠️" items={streamingSections.weaknesses} accent="var(--intent-decisive)" cursorOnLast={lastStreamingSection === "weaknesses"} />
+          )}
+          {streamingSections.recommendations.length > 0 && (
+            <SectionBlock title="Recommendations" icon="🛠️" items={streamingSections.recommendations} accent="var(--bright-purple)" cursorOnLast={lastStreamingSection === "recommendations"} />
+          )}
+        </div>
+      )}
       {error && (
         <div className="text-[13px] text-[var(--bad)]">{error}</div>
       )}
-      {!loading && !error && (
+      {!loading && !isStreaming && !error && (
         sections ? (
           <div className={`grid gap-4 ${compact ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-3"}`}>
             <SectionBlock title="Strengths" icon="✅" items={sections.strengths} accent="var(--accent-grn)" />

@@ -4,13 +4,13 @@ import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
 
 const BELIEFS = [
-    "We believe the mind and voice are a single instrument.",
-    "We reject the culture of verbal clutter.",
-    "We believe confidence is the outcome of clarity.",
-    "We believe ideas deserve form: structured, simple, and strong.",
-    "We believe speaking well is not extroversion. It is precision.",
-    "We believe pressure does not create clarity. It exposes it.",
-    "We believe silence is not emptiness. Silence is space to think.",
+    "Most feedback on how you communicate is late, vague, and subjective.",
+    "A friend says \"that was great.\" A manager says \"be more concise.\" Neither tells you anything you can act on today.",
+    "Communication is a skill. Measurable. Improvable. Worth practicing deliberately.",
+    "Not because you need to be a great speaker. Because unclear thinking sounds like unclear speaking. You probably have better ideas than you're currently able to express.",
+    "This matters more now than it ever has.",
+    "AI executes what you say. Literally. The quality of your output from a coding agent, a research tool, a writing assistant is a direct function of how clearly you think. Vague in. Vague out. Crisp in. Crisp out.",
+    "The most important interface in 2026 is plain English. Most people have never practiced using it deliberately.",
 ];
 
 export default function ManifestoBlock() {
@@ -48,7 +48,7 @@ export default function ManifestoBlock() {
                     className="mt-24 pt-12 border-t border-white/10"
                 >
                     <p className="text-lg text-white/60 max-w-2xl">
-                        Crisp exists to rebuild what school, social media, and corporate chaos have broken: attention, articulation, and cognitive discipline.
+                        Crisp gives you the rep. The data. The next rep.<br />That&apos;s it.
                     </p>
                 </motion.div>
             </div>

@@ -7,6 +7,7 @@ import ProgressChart from '@/components/ProgressChart'
 import MetricDelta from '@/components/MetricDelta'
 import LoadingOverlay from '@/components/LoadingOverlay'
 import posthog from 'posthog-js'
+import type { PrepPath } from '@/lib/guided/types'
 
 interface Session {
   session_id: string
@@ -26,6 +27,10 @@ export default function DashboardPage() {
   const [sessions, setSessions] = useState<Session[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [jdText, setJdText] = useState('')
+  const [guidedPlan, setGuidedPlan] = useState<PrepPath | null>(null)
+  const [guidedLoading, setGuidedLoading] = useState(false)
+  const [guidedError, setGuidedError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -88,6 +93,31 @@ export default function DashboardPage() {
 
     fetchSessions()
   }, [user])
+
+  async function handleGuidedSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!jdText.trim() || guidedLoading) return
+    setGuidedLoading(true)
+    setGuidedError(null)
+    setGuidedPlan(null)
+    try {
+      const res = await fetch('/api/guided/plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ job_description: jdText }),
+      })
+      const result = await res.json()
+      if (!res.ok) {
+        throw new Error(result.message || result.error || `Request failed: ${res.status}`)
+      }
+      const plan = result.data || result
+      setGuidedPlan(plan as PrepPath)
+    } catch (err) {
+      setGuidedError(err instanceof Error ? err.message : 'Failed to generate prep path')
+    } finally {
+      setGuidedLoading(false)
+    }
+  }
 
   if (authLoading || loading) {
     return <LoadingOverlay show={true} label="Loading your progress..." />
@@ -192,6 +222,91 @@ export default function DashboardPage() {
             </div>
           </>
         )}
+
+        {/* Guided Interview Prep card */}
+        <div className="rounded-[var(--radius-lg)] shadow-[0_4px_20px_rgba(11,11,12,0.08)] bg-white border border-[var(--muted-2)] p-6">
+          <h2 className="text-xl font-bold text-[var(--ink)] mb-1" style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic' }}>
+            Prepare for an Interview
+          </h2>
+          <p className="text-sm text-[var(--ink-light)] mb-4">Paste a job description to generate a targeted practice path with signals and modules.</p>
+          <form onSubmit={handleGuidedSubmit} className="space-y-3">
+            <textarea
+              value={jdText}
+              onChange={(e) => setJdText(e.target.value)}
+              placeholder="Paste the job description here — role, responsibilities, requirements..."
+              rows={5}
+              className="w-full px-4 py-3 text-sm text-[var(--ink)] bg-[var(--bg-warm)] border border-[var(--muted-2)] rounded-lg resize-none outline-none focus:border-[var(--bright-purple)] transition-colors placeholder:text-[var(--ink-light)]"
+            />
+            <div className="flex items-center gap-3">
+              <button
+                type="submit"
+                disabled={!jdText.trim() || guidedLoading}
+                className="px-5 py-2 rounded-full bg-[var(--bright-purple)] text-white text-sm font-semibold disabled:opacity-40 hover:opacity-90 transition-opacity"
+              >
+                {guidedLoading ? 'Generating…' : 'Generate Prep Path'}
+              </button>
+              {guidedLoading && (
+                <div className="h-0.5 flex-1 rounded-full bg-[var(--muted-2)] overflow-hidden">
+                  <div className="h-full bg-[var(--bright-purple)] animate-[loading-bar_1.5s_ease-in-out_infinite]" style={{ width: '60%' }} />
+                </div>
+              )}
+            </div>
+          </form>
+
+          {guidedError && (
+            <p className="mt-3 text-sm text-[var(--bad)]">{guidedError}</p>
+          )}
+
+          {guidedPlan && (
+            <div className="mt-6 space-y-5">
+              <div>
+                <h3 className="text-base font-bold text-[var(--ink)] tracking-tight">{guidedPlan.title}</h3>
+                <p className="text-sm text-[var(--ink-light)] mt-1">{guidedPlan.objective}</p>
+              </div>
+
+              {guidedPlan.signals && guidedPlan.signals.length > 0 && (
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.08em] font-medium text-[var(--ink-light)] mb-2">Key Signals</p>
+                  <div className="flex flex-wrap gap-2">
+                    {guidedPlan.signals.map((signal) => (
+                      <div key={signal.id} className="group relative">
+                        <span className="px-3 py-1 rounded-full text-[12px] font-medium bg-[var(--bright-purple)]/10 text-[var(--bright-purple)] cursor-default">
+                          {signal.label}
+                        </span>
+                        {signal.evidence && signal.evidence.length > 0 && (
+                          <div className="absolute bottom-full left-0 mb-2 hidden group-hover:block z-10 w-64 p-3 rounded-lg bg-[var(--ink)] text-white text-[12px] leading-5 shadow-lg">
+                            {signal.evidence.map((e, i) => (
+                              <p key={i} className="italic opacity-80">&ldquo;{e}&rdquo;</p>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {guidedPlan.modules && guidedPlan.modules.length > 0 && (
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.08em] font-medium text-[var(--ink-light)] mb-2">Practice Modules</p>
+                  <ol className="space-y-3">
+                    {guidedPlan.modules.map((mod, idx) => (
+                      <li key={idx} className="flex gap-3">
+                        <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[var(--bright-purple)]/15 text-[var(--bright-purple)] text-[12px] font-bold flex items-center justify-center">{idx + 1}</span>
+                        <div>
+                          <p className="text-sm font-medium text-[var(--ink)]">{mod.goal}</p>
+                          {mod.type === 'coach_rep' && (
+                            <p className="text-[12px] text-[var(--ink-light)] mt-0.5">{mod.prompt}</p>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </section>
     </main>
   )

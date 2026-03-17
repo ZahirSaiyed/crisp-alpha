@@ -21,6 +21,7 @@ import posthog from "posthog-js";
 import ScenarioInput, { type Intent } from "../../components/ScenarioInput";
 import { applyIntentTheme, removeIntentTheme, getIntentLabel, getIntentTheme, hexToRgba } from "../../lib/intentTheme";
 
+
 type MetricsRemote = Comlink.Remote<import("../../workers/metrics.worker").MetricsWorker>;
 
 type Paragraph = { text: string; start?: number; end?: number };
@@ -226,9 +227,8 @@ export default function RecordPage() {
 
   const startCompute = useCallback(async (url: string, blob: Blob) => {
     try {
-      console.warn('🎯 startCompute called with URL:', url, 'and blob size:', blob.size);
       computeInFlightRef.current = true;
-      
+
       // Validate inputs
       if (!url || typeof url !== 'string' || !url.startsWith('blob:')) {
         throw new Error('Invalid blob URL provided');
@@ -236,34 +236,27 @@ export default function RecordPage() {
       if (!blob || blob.size === 0) {
         throw new Error('Invalid or empty blob provided');
       }
-      
-      console.warn('🔊 Decoding audio...');
+
       const { pcm, sampleRate, durationSec } = await decodeToPCM16kMono(blob);
-      console.warn('✅ Audio decoded, duration:', durationSec);
-      
+
       // Set duration immediately so overlay can hide
       setDurationSec(durationSec);
-      
+
       try {
-        console.warn('👷 Ensuring worker...');
         const api = ensureWorker();
         if (!api) throw new Error("Worker unavailable");
-        console.warn('✅ Worker available');
-        
-        console.warn('🧮 Computing metrics...');
+
         const summary = await api.computeCoreFromPcm(pcm, sampleRate);
-      console.warn('✅ Metrics computed');
-        
+
         const delivery: Partial<DeliverySummary> = {
           endRushIndex: summary.endRushIndexApprox ?? 0,
           pauses: summary.pauseEvents,
           durationSec,
         } as Partial<DeliverySummary>;
-        
-        console.warn('💾 Setting core summary...');
+
         setCoreSummary(delivery);
       } catch (workerError) {
-        console.warn('⚠️ Worker failed, continuing without advanced metrics:', workerError);
+        console.error('Worker failed, continuing without advanced metrics:', workerError);
         // Set a minimal summary so the app doesn't get stuck
         const delivery: Partial<DeliverySummary> = {
           endRushIndex: 0,
@@ -272,8 +265,7 @@ export default function RecordPage() {
         } as Partial<DeliverySummary>;
         setCoreSummary(delivery);
       }
-      
-      console.warn('✅ State updated successfully');
+
     } catch (error) {
       console.error('❌ Audio processing failed:', error);
       // Set minimal state to prevent getting stuck
@@ -281,31 +273,20 @@ export default function RecordPage() {
       setCoreSummary({ endRushIndex: 0, pauses: [], durationSec: 0 });
     } finally {
       computeInFlightRef.current = false;
-      console.warn('🏁 startCompute finished');
     }
   }, []);
 
   const handlePhaseChange = useCallback((p: string) => {
-    console.warn('🔄 Phase changed to:', p);
     currentPhaseRef.current = p;
   }, []);
 
   const handleBlobUrlChange = useCallback((url: string | null, blob: Blob | null | undefined) => {
-    console.warn('🔍 handleBlobUrlChange called with:', url, 'blob:', blob);
-    console.warn('🔍 Current phase:', currentPhaseRef.current);
-    console.warn('🔍 Last URL:', lastUrlRef.current);
-    console.warn('🔍 Compute in flight:', computeInFlightRef.current);
-    
     if (!url || !blob || lastUrlRef.current === url || computeInFlightRef.current) {
-      console.warn('🔍 Early return - conditions not met');
       return;
     }
     if (currentPhaseRef.current !== "ready") {
-      console.warn('🔍 Early return - phase not ready');
       return;
     }
-    
-    console.warn('🚀 Starting compute with URL:', url, 'and blob');
     lastUrlRef.current = url;
     setAudioUrl(url);
     startCompute(url, blob);
@@ -364,16 +345,6 @@ export default function RecordPage() {
     (Array.isArray(tokens) && tokens.length > 0) ||
     (typeof rawTranscript === "string" && rawTranscript.trim().length > 0)
   );
-
-  // Debug metrics
-  console.warn('📊 Metrics debug:', {
-    talkTimeSec,
-    tokensLength: tokens?.length,
-    rawTranscriptLength: rawTranscript?.length,
-    hasAnyMetrics,
-    audioUrl: !!audioUrl,
-    overlayVisible
-  });
 
   useEffect(() => {
     const shouldShow = Boolean(audioUrl) && !hasAnyMetrics;

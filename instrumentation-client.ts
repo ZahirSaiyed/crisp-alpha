@@ -1,11 +1,9 @@
 import posthog from 'posthog-js'
 
-posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY || '', {
-    api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://app.posthog.com',
-    // Disable in development unless you want to test
-    loaded: (posthog) => {
-        if (process.env.NODE_ENV === 'development') {
-            posthog.debug()
-        }
-    }
-});
+const posthogKey = process.env.NEXT_PUBLIC_POSTHOG_KEY
+
+if (posthogKey && process.env.NODE_ENV !== 'development') {
+    posthog.init(posthogKey, {
+        api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://app.posthog.com',
+    });
+}

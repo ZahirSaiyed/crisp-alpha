@@ -5,7 +5,9 @@ import { useParams, useRouter } from "next/navigation";
 import { getSession } from "../../../lib/sessionStore";
 import TranscriptPanel from "../../../components/TranscriptPanel";
 import MetricsTile from "../../../components/MetricsTile";
+import FeedbackTile from "../../../components/FeedbackTile";
 import { detectFillerCounts, detectPauses, WordToken } from "../../../lib/analysis";
+import { deriveScores } from "../../../lib/metrics";
 import posthog from "posthog-js";
 
 export default function ResultsPage() {
@@ -102,7 +104,31 @@ export default function ResultsPage() {
           mostCommonFiller={fillers.mostCommon}
           approximate={false}
         />
+
+        {/* Scores bar */}
+        {(() => {
+          const scores = deriveScores({ wpm: wpm ?? 0, fillerCount: fillers.total, totalWords: tokens.length, pauseCount: pauses.length, talkTimeSec });
+          const pacingOk = wpm !== null && wpm >= 130 && wpm <= 170;
+          return (
+            <div className="flex gap-3 flex-wrap">
+              <div className="flex items-baseline gap-2 px-4 py-2 rounded-full" style={{ background: 'rgba(34,197,94,0.1)' }}>
+                <span className="text-[11px] uppercase tracking-[0.08em] font-medium text-[var(--ink-light)]">Clarity</span>
+                <span className="text-xl font-bold" style={{ color: 'var(--accent-grn)' }}>{(scores.clarity_score * 100).toFixed(0)}%</span>
+              </div>
+              <div className="flex items-baseline gap-2 px-4 py-2 rounded-full" style={{ background: 'rgba(139,92,246,0.1)' }}>
+                <span className="text-[11px] uppercase tracking-[0.08em] font-medium text-[var(--ink-light)]">Confidence</span>
+                <span className="text-xl font-bold" style={{ color: 'var(--bright-purple)' }}>{(scores.confidence_score * 100).toFixed(0)}%</span>
+              </div>
+              <div className="flex items-baseline gap-2 px-4 py-2 rounded-full" style={{ background: pacingOk ? 'rgba(34,197,94,0.1)' : 'rgba(245,158,11,0.1)' }}>
+                <span className="text-[11px] uppercase tracking-[0.08em] font-medium text-[var(--ink-light)]">Pacing</span>
+                <span className="text-xl font-bold" style={{ color: pacingOk ? 'var(--accent-grn)' : 'var(--intent-decisive)' }}>{wpm !== null ? `${Math.round(wpm)} WPM` : '— WPM'}</span>
+              </div>
+            </div>
+          );
+        })()}
+
         <TranscriptPanel tokens={tokens} pauses={pauses} />
+        <FeedbackTile tokens={tokens} />
       </section>
     </main>
   );
