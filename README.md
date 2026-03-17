@@ -2,7 +2,7 @@
 
 **Deliberate communication practice, powered by AI.**
 
-Most feedback on how you speak is late, vague, and subjective. Crisp gives you the rep, the data, and the next rep — in under two minutes.
+Most feedback on how you speak is late, vague, and subjective. Crisp gives you the rep, the data, and the next rep. In under two minutes.
 
 ---
 
