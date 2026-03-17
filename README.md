@@ -1,58 +1,81 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Crisp
 
-## Getting Started
+**Deliberate communication practice, powered by AI.**
 
-First, run the development server:
+Most feedback on how you speak is late, vague, and subjective. Crisp gives you the rep, the data, and the next rep — in under two minutes.
+
+---
+
+## What it does
+
+1. **Set your scenario** — paste a context (e.g. "onsite interview with Mintlify founders") and pick a communication intent (decisive, natural, calm, persuasive, empathetic)
+2. **Get tailored prompts** — Gemini generates 3 practice questions matched to your scenario and intent
+3. **Record your answer** — browser-native recording, no installs
+4. **Get instant metrics** — WPM, filler word counts, pause analysis, end-rush detection, all computed client-side in a Web Worker
+5. **Get streamed AI feedback** — structured coaching (Strengths / Weaknesses / Recommendations) streams in progressively as Gemini generates it, section by section
+
+---
+
+## Tech
+
+| Layer | Stack |
+|---|---|
+| Framework | Next.js 15 (App Router) |
+| Language | TypeScript |
+| Styling | Tailwind CSS |
+| Animation | Framer Motion |
+| Transcription | Deepgram Nova-2 (filler words, paragraphs, word-level timestamps) |
+| AI | Google Gemini 2.5 Flash (`generateContentStream`) |
+| Auth + DB | Supabase (auth, session history) |
+| Analytics | PostHog |
+| Audio processing | Web Worker + Comlink (PCM decoding off main thread) |
+
+### A few things worth noting
+
+- **Metrics run entirely in the browser** — WPM, pauses, fillers, end-rush index all computed in a `metrics.worker.ts` via Comlink. No audio ever leaves the client for analysis.
+- **Feedback streams** — the `/api/feedback` route uses `generateContentStream` and pipes a `ReadableStream` directly to the client. The frontend parses sections progressively as text arrives, rendering structured UI starting ~500ms after the transcript loads.
+- **Audio privacy** — recorded audio is decoded to PCM for analysis and transcribed via Deepgram, then immediately discarded. Nothing is stored server-side.
+- **Intent theming** — selecting a communication intent applies a CSS variable theme across the entire UI in real time.
+
+---
+
+## Running locally
 
 ```bash
+cp .env.example .env.local
+# fill in DEEPGRAM_API_KEY, GEMINI_API_KEY, and optionally Supabase + PostHog keys
+
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+See `.env.example` for all environment variables with descriptions.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## Project structure
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-
-## Storage presigned uploads (audio privacy)
-
-This app can upload recorded audio directly from the browser to S3 using presigned URLs. The server never receives raw audio; it only receives an object key to transcribe.
-
-Environment variables:
-
-- `S3_BUCKET` – S3 bucket name
-- `S3_REGION` – S3 region (e.g. `us-east-1`)
-- `S3_UPLOAD_PREFIX` – Optional prefix for uploads (default `uploads/`)
-- `DEEPGRAM_API_KEY` – Deepgram API key for transcription
-- `NEXT_PUBLIC_ALLOW_DIRECT_UPLOAD_FALLBACK` – Optional (default unset/false). If set to `true`, enables legacy direct upload to the transcription API for development only.
-
-Endpoints:
-
-- `POST /api/upload/presign` → `{ uploadUrl, objectKey, expiresAt }`
-- `POST /api/transcribe` with JSON `{ objectKey }`
-
-Notes:
-
-- Presigned URL TTL: 24h.
-- If presign fails and the fallback flag is not enabled, the client will show an error to preserve privacy.
+```
+src/
+  app/
+    api/
+      feedback/     # Gemini streaming feedback
+      prompts/      # Scenario-based prompt generation
+      transcribe/   # Deepgram transcription
+      sessions/     # Session persistence (Supabase)
+      guided/       # Guided prep path from job description
+  components/
+    FeedbackTile    # Progressive streaming feedback UI
+    MetricsTile     # Real-time delivery metrics
+    RecordingTakeover  # Full-screen recording flow
+    TranscriptPlayerCard  # Synchronized transcript + audio player
+  lib/
+    analysis.ts     # Filler detection, pause detection, strategic pause coverage
+    delivery.ts     # Delivery summary types
+    focus.ts        # Focus selection logic (goal → drill)
+    metrics.ts      # Session metric scoring
+  workers/
+    metrics.worker.ts  # Off-thread PCM analysis via Comlink
+```
